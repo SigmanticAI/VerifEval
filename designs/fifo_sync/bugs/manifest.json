@@ -1,0 +1,51 @@
+{
+  "bugs": [
+    {
+      "id": "bug_full_flag",
+      "file": "bug_full_flag.sv",
+      "description": "Full flag asserts at count >= DEPTH-1 instead of count == DEPTH",
+      "type": "functional",
+      "severity": "critical",
+      "location": "line 33",
+      "expected_detection": {
+        "by_assertion": "assert_full_flag",
+        "by_test": "test_full_flag or test_write_when_full",
+        "symptom": "FIFO reports full when it still has space for 1 entry"
+      }
+    },
+    {
+      "id": "bug_empty_flag",
+      "file": "bug_empty_flag.sv",
+      "description": "Empty flag uses count <= 1 instead of count == 0",
+      "type": "functional",
+      "severity": "critical",
+      "expected_detection": {
+        "by_assertion": "assert_empty_flag",
+        "by_test": "test_empty_flag or test_read_when_empty"
+      }
+    },
+    {
+      "id": "bug_count",
+      "file": "bug_count.sv",
+      "description": "Count increments on both read and write instead of write-only",
+      "type": "functional",
+      "severity": "critical",
+      "expected_detection": {
+        "by_assertion": "assert_count_increment",
+        "by_test": "test_count_accuracy"
+      }
+    },
+    {
+      "id": "bug_ordering",
+      "file": "bug_ordering.sv",
+      "description": "Read pointer increments by 2 causing incorrect FIFO ordering",
+      "type": "functional",
+      "severity": "critical",
+      "expected_detection": {
+        "by_assertion": "assert_fifo_order",
+        "by_test": "test_fifo_order"
+      }
+    }
+  ]
+}
+

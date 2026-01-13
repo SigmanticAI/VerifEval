@@ -1,0 +1,375 @@
+{
+  "verification_plan": {
+    "project": "sync_fifo",
+    "version": "1.0",
+    "methodology": "UVM 1.2",
+    "target_coverage": {
+      "functional": "100%",
+      "code": "100%",
+      "assertion": "100%"
+    }
+  },
+  
+  "test_categories": {
+    "basic_operations": {
+      "priority": "HIGH",
+      "tests": [
+        {
+          "name": "test_reset",
+          "description": "Verify reset behavior initializes all outputs correctly",
+          "steps": [
+            "Apply reset",
+            "Check wr_ptr, rd_ptr, rd_data, count_reg are zero",
+            "Verify empty=1, full=0",
+            "Release reset and verify stable operation"
+          ],
+          "expected": "All pointers and count zero, empty asserted, full deasserted"
+        },
+        {
+          "name": "test_single_write",
+          "description": "Write single data item to empty FIFO",
+          "steps": [
+            "Assert wr_en with valid wr_data",
+            "Verify count increments to 1",
+            "Check empty deasserts, almost_empty asserts"
+          ],
+          "expected": "Data stored, count=1, empty=0, almost_empty=1"
+        },
+        {
+          "name": "test_single_read",
+          "description": "Read single data item from FIFO with one entry",
+          "steps": [
+            "Write one item, then read",
+            "Verify rd_data matches written data",
+            "Check count decrements to 0"
+          ],
+          "expected": "Correct data read, count=0, empty=1"
+        },
+        {
+          "name": "test_write_read_sequence",
+          "description": "Sequential write then read operations",
+          "steps": [
+            "Write N items sequentially",
+            "Read N items sequentially",
+            "Verify FIFO ordering (first-in-first-out)"
+          ],
+          "expected": "Data read in same order as written"
+        }
+      ]
+    },
+    
+    "boundary_conditions": {
+      "priority": "HIGH",
+      "tests": [
+        {
+          "name": "test_fill_to_full",
+          "description": "Fill FIFO completely to DEPTH entries",
+          "steps": [
+            "Write DEPTH items",
+            "Verify count reaches DEPTH",
+            "Check full=1, almost_full transitions correctly"
+          ],
+          "expected": "full=1 when count=DEPTH, almost_full=1 at DEPTH-1"
+        },
+        {
+          "name": "test_drain_to_empty",
+          "description": "Drain FIFO completely from full state",
+          "steps": [
+            "Fill FIFO, then read all entries",
+            "Verify count reaches 0",
+            "Check empty=1, almost_empty transitions correctly"
+          ],
+          "expected": "empty=1 when count=0, almost_empty=1 at count=1"
+        },
+        {
+          "name": "test_write_when_full",
+          "description": "Attempt write when FIFO is full (no concurrent read)",
+          "steps": [
+            "Fill FIFO to full",
+            "Assert wr_en without rd_en",
+            "Verify write is blocked, data preserved"
+          ],
+          "expected": "No data corruption, count stays at DEPTH"
+        },
+        {
+          "name": "test_read_when_empty",
+          "description": "Attempt read when FIFO is empty (no concurrent write)",
+          "steps": [
+            "Empty the FIFO",
+            "Assert rd_en without wr_en",
+            "Verify read is blocked"
+          ],
+          "expected": "No pointer change, count stays at 0"
+        },
+        {
+          "name": "test_almost_full_threshold",
+          "description": "Verify almost_full flag at DEPTH-1",
+          "steps": [
+            "Fill to DEPTH-2, verify almost_full=0",
+            "Write one more, verify almost_full=1",
+            "Write one more, verify almost_full=0, full=1"
+          ],
+          "expected": "almost_full precise at count=DEPTH-1"
+        },
+        {
+          "name": "test_almost_empty_threshold",
+          "description": "Verify almost_empty flag at count=1",
+          "steps": [
+            "Fill to 3 items, verify almost_empty=0",
+            "Read to count=1, verify almost_empty=1",
+            "Read one more, verify almost_empty=0, empty=1"
+          ],
+          "expected": "almost_empty precise at count=1"
+        }
+      ]
+    },
+    
+    "concurrent_operations": {
+      "priority": "HIGH",
+      "tests": [
+        {
+          "name": "test_simultaneous_rw_normal",
+          "description": "Simultaneous read and write in normal state",
+          "steps": [
+            "Fill FIFO partially",
+            "Assert both wr_en and rd_en",
+            "Verify both operations complete, count unchanged"
+          ],
+          "expected": "Both operations successful, count stable"
+        },
+        {
+          "name": "test_simultaneous_rw_when_full",
+          "description": "Simultaneous read and write when FIFO is full",
+          "steps": [
+            "Fill FIFO to full",
+            "Assert both wr_en and rd_en",
+            "Verify write succeeds (enabled by concurrent read)"
+          ],
+          "expected": "Write allowed due to simultaneous read, count stays DEPTH"
+        },
+        {
+          "name": "test_simultaneous_rw_when_empty",
+          "description": "Simultaneous read and write when FIFO is empty",
+          "steps": [
+            "Empty the FIFO",
+            "Assert both wr_en and rd_en",
+            "Verify read succeeds (enabled by concurrent write)"
+          ],
+          "expected": "Read allowed due to simultaneous write, count stays 0"
+        }
+      ]
+    },
+    
+    "pointer_management": {
+      "priority": "MEDIUM",
+      "tests": [
+        {
+          "name": "test_write_pointer_wrap",
+          "description": "Verify write pointer wraps correctly at DEPTH-1",
+          "steps": [
+            "Write DEPTH items (with concurrent reads to prevent full)",
+            "Verify wr_ptr wraps from DEPTH-1 to 0"
+          ],
+          "expected": "Pointer wraps correctly, no overflow"
+        },
+        {
+          "name": "test_read_pointer_wrap",
+          "description": "Verify read pointer wraps correctly at DEPTH-1",
+          "steps": [
+            "Write and read DEPTH items",
+            "Verify rd_ptr wraps from DEPTH-1 to 0"
+          ],
+          "expected": "Pointer wraps correctly, no overflow"
+        },
+        {
+          "name": "test_pointer_relationship",
+          "description": "Verify pointer difference matches count",
+          "steps": [
+            "Perform random read/write operations",
+            "Verify count always matches (wr_ptr - rd_ptr) mod DEPTH"
+          ],
+          "expected": "Count accurately reflects FIFO occupancy"
+        }
+      ]
+    },
+    
+    "data_integrity": {
+      "priority": "HIGH",
+      "tests": [
+        {
+          "name": "test_data_pattern_walking_ones",
+          "description": "Write walking ones pattern, verify on read",
+          "steps": [
+            "Write 2^DATA_WIDTH patterns with single bit set",
+            "Read and verify each pattern"
+          ],
+          "expected": "All bits preserved correctly"
+        },
+        {
+          "name": "test_data_pattern_walking_zeros",
+          "description": "Write walking zeros pattern, verify on read",
+          "steps": [
+            "Write 2^DATA_WIDTH patterns with single bit clear",
+            "Read and verify each pattern"
+          ],
+          "expected": "All bits preserved correctly"
+        },
+        {
+          "name": "test_data_pattern_all_ones",
+          "description": "Write all-ones pattern",
+          "steps": [
+            "Write 0xFF (or max value for DATA_WIDTH)",
+            "Read and verify"
+          ],
+          "expected": "Pattern preserved"
+        },
+        {
+          "name": "test_data_pattern_all_zeros",
+          "description": "Write all-zeros pattern",
+          "steps": [
+            "Write 0x00",
+            "Read and verify"
+          ],
+          "expected": "Pattern preserved"
+        },
+        {
+          "name": "test_fifo_ordering",
+          "description": "Verify strict FIFO ordering",
+          "steps": [
+            "Write unique sequential values",
+            "Read and verify order matches write order"
+          ],
+          "expected": "First-in-first-out order maintained"
+        }
+      ]
+    },
+    
+    "stress_tests": {
+      "priority": "MEDIUM",
+      "tests": [
+        {
+          "name": "test_rapid_fill_drain",
+          "description": "Rapidly fill and drain FIFO multiple times",
+          "steps": [
+            "Repeat 100 times: fill completely, drain completely",
+            "Verify no data corruption or flag errors"
+          ],
+          "expected": "Consistent behavior across iterations"
+        },
+        {
+          "name": "test_random_operations",
+          "description": "Random mix of read/write operations",
+          "steps": [
+            "Generate random wr_en, rd_en, wr_data",
+            "Run for 10000 cycles",
+            "Verify data integrity and flag correctness"
+          ],
+          "expected": "No protocol violations or data corruption"
+        },
+        {
+          "name": "test_alternating_rw",
+          "description": "Alternating single read and write",
+          "steps": [
+            "Write one, read one, repeat 1000 times",
+            "Verify count oscillates between 0 and 1"
+          ],
+          "expected": "Stable operation, correct data"
+        }
+      ]
+    },
+    
+    "reset_scenarios": {
+      "priority": "MEDIUM",
+      "tests": [
+        {
+          "name": "test_reset_during_write",
+          "description": "Assert reset during write operation",
+          "steps": [
+            "Start write operation",
+            "Assert reset mid-operation",
+            "Verify clean reset state"
+          ],
+          "expected": "FIFO resets cleanly, no partial writes"
+        },
+        {
+          "name": "test_reset_during_read",
+          "description": "Assert reset during read operation",
+          "steps": [
+            "Start read operation",
+            "Assert reset mid-operation",
+            "Verify clean reset state"
+          ],
+          "expected": "FIFO resets cleanly"
+        },
+        {
+          "name": "test_reset_when_full",
+          "description": "Reset FIFO when full",
+          "steps": [
+            "Fill FIFO completely",
+            "Assert reset",
+            "Verify empty state after reset"
+          ],
+          "expected": "FIFO empty after reset, all pointers zero"
+        },
+        {
+          "name": "test_multiple_resets",
+          "description": "Multiple consecutive reset assertions",
+          "steps": [
+            "Assert reset multiple times",
+            "Verify stable reset state"
+          ],
+          "expected": "Consistent reset behavior"
+        }
+      ]
+    }
+  },
+  
+  "coverage_goals": {
+    "functional_coverage": {
+      "fifo_states": [
+        "empty (count=0)",
+        "almost_empty (count=1)",
+        "normal (1 < count < DEPTH-1)",
+        "almost_full (count=DEPTH-1)",
+        "full (count=DEPTH)"
+      ],
+      "operations": [
+        "write_only",
+        "read_only",
+        "simultaneous_rw",
+        "no_operation"
+      ],
+      "transitions": [
+        "empty_to_not_empty",
+        "not_empty_to_empty",
+        "full_to_not_full",
+        "not_full_to_full",
+        "almost_empty_transitions",
+        "almost_full_transitions"
+      ],
+      "cross_coverage": [
+        "operation x fifo_state",
+        "data_patterns x fifo_state"
+      ]
+    },
+    "code_coverage": {
+      "statement": "100%",
+      "branch": "100%",
+      "condition": "100%",
+      "toggle": "100%"
+    }
+  },
+  
+  "assertion_checklist": [
+    "No write when full without concurrent read",
+    "No read when empty without concurrent write",
+    "Count never exceeds DEPTH",
+    "Count never goes negative",
+    "Pointers always in valid range [0, DEPTH-1]",
+    "Full and empty mutually exclusive (except corner cases)",
+    "Data integrity on read matches written data",
+    "Status flags match count value",
+    "Reset initializes all state correctly"
+  ]
+}
+

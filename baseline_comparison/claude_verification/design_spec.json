@@ -1,0 +1,152 @@
+{
+  "design_name": "sync_fifo",
+  "version": "1.0",
+  "description": "Synchronous FIFO with configurable data width and depth, supporting simultaneous read/write operations",
+  
+  "parameters": {
+    "DATA_WIDTH": {
+      "default": 8,
+      "description": "Width of data bus in bits",
+      "range": "1 to 64"
+    },
+    "DEPTH": {
+      "default": 16,
+      "description": "Number of entries in FIFO",
+      "range": "2 to 4096"
+    },
+    "ADDR_WIDTH": {
+      "default": 4,
+      "description": "Width of address pointers (must be log2(DEPTH))",
+      "constraint": "ADDR_WIDTH = $clog2(DEPTH)"
+    }
+  },
+  
+  "ports": {
+    "inputs": {
+      "clk": {
+        "width": 1,
+        "description": "System clock, positive edge triggered"
+      },
+      "rst_n": {
+        "width": 1,
+        "description": "Active-low asynchronous reset"
+      },
+      "wr_en": {
+        "width": 1,
+        "description": "Write enable signal"
+      },
+      "rd_en": {
+        "width": 1,
+        "description": "Read enable signal"
+      },
+      "wr_data": {
+        "width": "DATA_WIDTH",
+        "description": "Data to be written to FIFO"
+      }
+    },
+    "outputs": {
+      "rd_data": {
+        "width": "DATA_WIDTH",
+        "description": "Data read from FIFO (registered output)"
+      },
+      "full": {
+        "width": 1,
+        "description": "FIFO full flag (count == DEPTH)"
+      },
+      "empty": {
+        "width": 1,
+        "description": "FIFO empty flag (count == 0)"
+      },
+      "almost_full": {
+        "width": 1,
+        "description": "FIFO almost full flag (count == DEPTH-1)"
+      },
+      "almost_empty": {
+        "width": 1,
+        "description": "FIFO almost empty flag (count == 1)"
+      },
+      "count": {
+        "width": "ADDR_WIDTH+1",
+        "description": "Current number of entries in FIFO"
+      }
+    }
+  },
+  
+  "functional_description": {
+    "memory_organization": {
+      "type": "Circular buffer",
+      "storage": "Register array mem[0:DEPTH-1]",
+      "pointer_width": "ADDR_WIDTH bits"
+    },
+    
+    "write_operation": {
+      "condition": "wr_en && (!full || rd_en)",
+      "behavior": [
+        "Data written to mem[wr_ptr]",
+        "Write pointer increments with wrap-around at DEPTH-1"
+      ],
+      "note": "Write allowed when full if simultaneous read occurs"
+    },
+    
+    "read_operation": {
+      "condition": "rd_en && (!empty || wr_en)",
+      "behavior": [
+        "rd_data updated with mem[rd_ptr]",
+        "Read pointer increments with wrap-around at DEPTH-1"
+      ],
+      "note": "Read allowed when empty if simultaneous write occurs"
+    },
+    
+    "count_management": {
+      "increment": "Write only (wr_en_int && !rd_en_int)",
+      "decrement": "Read only (!wr_en_int && rd_en_int)",
+      "unchanged": "Simultaneous read/write or no operation"
+    },
+    
+    "status_flags": {
+      "full": "Asserted when count_reg == DEPTH",
+      "empty": "Asserted when count_reg == 0",
+      "almost_full": "Asserted when count_reg == DEPTH-1",
+      "almost_empty": "Asserted when count_reg == 1"
+    }
+  },
+  
+  "reset_behavior": {
+    "type": "Asynchronous, active-low",
+    "initialization": {
+      "wr_ptr": 0,
+      "rd_ptr": 0,
+      "rd_data": 0,
+      "count_reg": 0
+    },
+    "note": "Memory contents not cleared on reset"
+  },
+  
+  "timing_characteristics": {
+    "clock_edge": "Positive edge",
+    "write_latency": "1 cycle (data available next cycle after write)",
+    "read_latency": "1 cycle (rd_data valid one cycle after rd_en)",
+    "output_type": "Registered (rd_data is registered output)"
+  },
+  
+  "special_features": {
+    "simultaneous_rw": {
+      "supported": true,
+      "description": "FIFO allows read and write in same cycle, maintaining count",
+      "full_behavior": "Write allowed if read also occurs",
+      "empty_behavior": "Read allowed if write also occurs"
+    },
+    "pointer_wrap": {
+      "type": "Explicit comparison",
+      "condition": "ptr == DEPTH-1 ? 0 : ptr + 1"
+    }
+  },
+  
+  "known_limitations": [
+    "Single clock domain only (no CDC support)",
+    "Memory not cleared on reset",
+    "No overflow/underflow error flags",
+    "No programmable almost_full/almost_empty thresholds"
+  ]
+}
+

@@ -1,0 +1,146 @@
+{
+  "design_name": "sync_fifo",
+  "complexity": "simple",
+  "expected_score_range": [85, 100],
+  "timeout_seconds": 300,
+  "scoring_weights": {
+    "specification_extraction": 0.25,
+    "verification_planning": 0.25,
+    "code_generation": 0.25,
+    "verification_completeness": 0.25
+  },
+  "evaluation_criteria": {
+    "specification_extraction": {
+      "module_detection": {
+        "points": 5,
+        "required": ["sync_fifo"]
+      },
+      "port_identification": {
+        "points": 5,
+        "required_ports": [
+          "clk", "rst_n", "wr_en", "rd_en", "wr_data", 
+          "rd_data", "full", "empty", "count"
+        ],
+        "optional_ports": ["almost_full", "almost_empty"]
+      },
+      "parameter_detection": {
+        "points": 3,
+        "required": ["DATA_WIDTH", "DEPTH"]
+      },
+      "fsm_identification": {
+        "points": 5,
+        "expected_states": ["EMPTY", "NORMAL", "FULL"],
+        "fuzzy_match": true
+      },
+      "requirements_extraction": {
+        "points": 7,
+        "minimum_requirements": 10,
+        "critical_requirements": [
+          "FIFO ordering",
+          "Full flag",
+          "Empty flag",
+          "Write when full",
+          "Read when empty"
+        ]
+      }
+    },
+    "verification_planning": {
+      "test_coverage": {
+        "points": 10,
+        "minimum_tests": 15,
+        "required_test_categories": [
+          "basic functionality",
+          "boundary conditions",
+          "corner cases"
+        ]
+      },
+      "assertion_planning": {
+        "points": 8,
+        "minimum_assertions": 8,
+        "critical_assertions": [
+          "full flag",
+          "empty flag",
+          "count bounds",
+          "no write when full",
+          "no read when empty"
+        ]
+      },
+      "coverage_strategy": {
+        "points": 7,
+        "required_covergroups": [
+          "FIFO states",
+          "operations",
+          "count values",
+          "flag combinations"
+        ]
+      }
+    },
+    "code_generation": {
+      "compilability": {
+        "points": 10,
+        "compile_commands": [
+          "vlog -sv design.sv"
+        ]
+      },
+      "uvm_compliance": {
+        "points": 5,
+        "required_components": [
+          "interface",
+          "agent",
+          "sequence",
+          "test"
+        ]
+      },
+      "code_quality": {
+        "points": 5,
+        "checks": [
+          "proper indentation",
+          "meaningful names",
+          "comments present"
+        ]
+      },
+      "interface_correctness": {
+        "points": 5,
+        "checks": [
+          "all DUT signals connected",
+          "proper signal directions",
+          "clock/reset handling"
+        ]
+      }
+    },
+    "verification_completeness": {
+      "requirement_coverage": {
+        "points": 10,
+        "target": 0.9,
+        "measurement": "requirements with associated tests"
+      },
+      "assertion_coverage": {
+        "points": 7,
+        "target": 0.8,
+        "measurement": "critical assertions present"
+      },
+      "functional_coverage": {
+        "points": 5,
+        "target": 0.8,
+        "measurement": "covergroups completeness"
+      },
+      "corner_case_coverage": {
+        "points": 3,
+        "target": 0.8,
+        "measurement": "corner cases addressed"
+      }
+    }
+  },
+  "bug_detection_test": {
+    "enabled": true,
+    "bug_files": [
+      "bugs/bug_full_flag.sv",
+      "bugs/bug_empty_flag.sv",
+      "bugs/bug_count.sv",
+      "bugs/bug_ordering.sv"
+    ],
+    "bonus_points": 10,
+    "points_per_bug": 2.5
+  }
+}
+

@@ -1,0 +1,385 @@
+{
+  "_source": "SystemVerilog Assertions Handbook - FIFO Requirements & Verification Plan",
+  "_document": "Document #: fifo_req_001 and fifo_ver_plan_001",
+  "_authoritative": true,
+  "_note": "Extracted from industry-standard reference book, not synthetic data",
+  
+  "functional_requirements": [
+    {
+      "id": "REQ-5.1.1.1",
+      "section": "5.1.1.1 Data_In",
+      "description": "When push is active, data_in shall be stored into the FIFO buffer at the next clock cycle",
+      "priority": "critical",
+      "category": "functional",
+      "test_required": true,
+      "assertion_required": false,
+      "verification": "Simulation - monitoring of properties and coverage"
+    },
+    {
+      "id": "REQ-5.1.1.2",
+      "section": "5.1.1.2 Data_Out", 
+      "description": "When pop is active, data_out shall carry the data that was first stored into the FIFO but was not yet popped. Data_out shall be asserted in the same cycle of pop control",
+      "priority": "critical",
+      "category": "functional",
+      "test_required": true,
+      "assertion_required": true,
+      "related_property": "p_pop_data"
+    },
+    {
+      "id": "REQ-5.1.2.1",
+      "section": "5.1.2.1 push",
+      "description": "It is an error if a push with no pop control occurs on a full FIFO",
+      "priority": "critical",
+      "category": "functional",
+      "test_required": true,
+      "assertion_required": true,
+      "related_property": "ap_push_error",
+      "sva_property": "sequence q_push_error; !(push && full && !pop); endsequence"
+    },
+    {
+      "id": "REQ-5.1.2.2",
+      "section": "5.1.2.2 pop",
+      "description": "It is an error if a pop control occurs on an empty FIFO",
+      "priority": "critical",
+      "category": "functional",
+      "test_required": true,
+      "assertion_required": true,
+      "related_property": "ap_pop_error",
+      "sva_property": "sequence q_pop_error; !(pop && empty && !push); endsequence"
+    },
+    {
+      "id": "REQ-5.1.2.3",
+      "section": "5.1.2.3 Push-Pop Data Sequencing",
+      "description": "Data entered into the FIFO buffer shall be outputted in the same order that it is entered (first-in, first-out)",
+      "priority": "critical",
+      "category": "functional",
+      "test_required": true,
+      "assertion_required": true,
+      "verification": "Verification of output sequence (i.e., first-in is first-out)"
+    },
+    {
+      "id": "REQ-5.1.3.1",
+      "section": "5.1.3.1 Full",
+      "description": "When the FIFO reaches the maximum depth of the buffer (BIT_DEPTH), then the full flag shall be active",
+      "priority": "critical",
+      "category": "functional",
+      "test_required": true,
+      "assertion_required": true,
+      "related_property": "ap_fifo_full",
+      "sva_property": "property p_fifo_full; @ (posedge clk) qFull |-> full; endproperty"
+    },
+    {
+      "id": "REQ-5.1.3.2",
+      "section": "5.1.3.2 Almost Full",
+      "description": "When the number of entries in the FIFO reaches or is greater than ¾ of the maximum depth (ALMOST_FULL), then the almost_full flag shall be active",
+      "priority": "high",
+      "category": "functional",
+      "test_required": true,
+      "assertion_required": true,
+      "related_property": "ap_fifo_almost_full",
+      "sva_property": "property p_fifo_almost_full; @ (posedge clk) qAlmost_full |-> almost_full; endproperty"
+    },
+    {
+      "id": "REQ-5.1.3.3",
+      "section": "5.1.3.3 Empty",
+      "description": "When all the enqueued data has been dequeued, then the empty flag shall be active. A reset shall cause the empty flag to be active",
+      "priority": "critical",
+      "category": "functional",
+      "test_required": true,
+      "assertion_required": true,
+      "related_property": "ap_fifo_empty",
+      "sva_property": "property p_fifo_empty; @ (posedge clk) qEmpty |-> empty; endproperty"
+    },
+    {
+      "id": "REQ-5.1.3.4",
+      "section": "5.1.3.4 Almost Empty",
+      "description": "When the number of entries in the FIFO reaches or is less than ¼ of the maximum depth (ALMOST_EMPTY), then the almost_empty flag shall be active",
+      "priority": "high",
+      "category": "functional",
+      "test_required": true,
+      "assertion_required": true,
+      "related_property": "ap_fifo_almost_empty",
+      "sva_property": "property p_fifo_almost_empty; @ (posedge clk) qAlmost_empty |-> almost_empty; endproperty"
+    },
+    {
+      "id": "REQ-5.1.4",
+      "section": "5.1.4 Reset",
+      "description": "The reset_n is an active low reset control that clears the pointers and the status flags. Reset shall result in: !almost_empty && !full && !almost_full && empty",
+      "priority": "critical",
+      "category": "functional",
+      "test_required": true,
+      "assertion_required": true,
+      "related_property": "ap_fifo_ptrs_flags_at_reset",
+      "sva_property": "property p_fifo_ptrs_flags_at_reset; @ (posedge clk) !reset_n |-> ##[0:1] !almost_empty && !full && !almost_full && empty; endproperty"
+    },
+    {
+      "id": "REQ-5.1.5",
+      "section": "5.1.5 Clock",
+      "description": "The clk clock is the synchronous system clock for the FIFO for both read and write transactions, active on the positive edge. Clock shall be at 50% duty cycle",
+      "priority": "high",
+      "category": "timing",
+      "test_required": false,
+      "assertion_required": false
+    },
+    {
+      "id": "REQ-5.1.6",
+      "section": "5.1.6 Error",
+      "description": "When either an overflow (push on full) or underflow (pop on empty) error has occurred, the error flag shall be asserted",
+      "priority": "critical",
+      "category": "functional",
+      "test_required": true,
+      "assertion_required": true,
+      "related_property": "ap_error_flag",
+      "sva_property": "property p_error_flag; @ (posedge clk) q_push_error or q_pop_error |=> error; endproperty"
+    },
+    {
+      "id": "REQ-8.1",
+      "section": "8.1 Fixed Parameterization",
+      "description": "The FIFO shall provide parameters: BIT_DEPTH (2**BIT_DEPTH = depth), WIDTH (data width), ALMOST_FULL (0.75 * depth), ALMOST_EMPTY (0.25 * depth)",
+      "priority": "high",
+      "category": "functional",
+      "test_required": true,
+      "assertion_required": false
+    },
+    {
+      "id": "REQ-9.1",
+      "section": "9.1 Frequency",
+      "description": "The FIFO shall support a maximum rate of 25 MHz",
+      "priority": "medium",
+      "category": "performance",
+      "test_required": false,
+      "assertion_required": false
+    },
+    {
+      "id": "REQ-9.2",
+      "section": "9.2 Power Dissipation",
+      "description": "The power shall be less than 0.01 watt at 25 MHz",
+      "priority": "low",
+      "category": "performance",
+      "test_required": false,
+      "assertion_required": false
+    }
+  ],
+
+  "test_strategies": [
+    {
+      "id": "TST-1",
+      "name": "Fixed Parameterization - Bit_depth",
+      "spec_section": "5.1, 5.1",
+      "priority": 1,
+      "test_sequence": "Configuration Setup: Buffer depth = 2**4, 2**5, 2**8; Width=16, 32; Pseudo-random push and pop transactions; Unique data patterns using random values",
+      "verification_criteria": "Design compiles and elaborates correctly. Simulation - monitoring of properties and coverage. Verification of output sequence (i.e., first-in is first-out)"
+    },
+    {
+      "id": "TST-2",
+      "name": "RESET - Reset applied when fill state of FIFO is at different levels",
+      "spec_section": "5.1.4",
+      "priority": 1,
+      "test_sequence": "property p_t1_full; @ (posedge clk) full |=> !reset_n; property p_t2_afull; @ (posedge clk) almost_full |=> !reset_n; property p_t3_empty; @ (posedge clk) empty |=> !reset_n; property p_t4_aempty; @ (posedge clk) almost_empty |=> !reset_n",
+      "verification_criteria": "Simulation - monitoring of properties and coverage"
+    },
+    {
+      "id": "TST-3",
+      "name": "COVERAGE - Using the properties and sequences defined in 4.1",
+      "spec_section": "",
+      "priority": 1,
+      "test_sequence": "cover property (p_push_pop_sequencing); cover property (qFull); cover property (qEmpty); cover property (qAlmost_empty); cover property (qAlmost_full); cover property (qOffull); cover property (qOffEmpty); cover property (qOffAlmost_empty); cover property (qOffAlmost_full)",
+      "verification_criteria": "Sequences must all have a coverage count of at least one"
+    }
+  ],
+
+  "corner_cases": [
+    {
+      "id": "CC-PUSH-FULL",
+      "description": "Push to full FIFO (overflow)",
+      "test_required": true,
+      "related_requirement": "REQ-5.1.2.1",
+      "verification": "Must trigger error flag and ap_push_error assertion"
+    },
+    {
+      "id": "CC-POP-EMPTY",
+      "description": "Pop from empty FIFO (underflow)",
+      "test_required": true,
+      "related_requirement": "REQ-5.1.2.2",
+      "verification": "Must trigger error flag and ap_pop_error assertion"
+    },
+    {
+      "id": "CC-SIMUL-RW-FULL",
+      "description": "Simultaneous read/write when full",
+      "test_required": true,
+      "related_requirement": "REQ-5.1.2.1",
+      "verification": "Should perform read only (no error)"
+    },
+    {
+      "id": "CC-SIMUL-RW-EMPTY",
+      "description": "Simultaneous read/write when empty",
+      "test_required": true,
+      "related_requirement": "REQ-5.1.2.2",
+      "verification": "Should perform write only (no error)"
+    },
+    {
+      "id": "CC-RESET-FULL",
+      "description": "Reset when FIFO is full",
+      "test_required": true,
+      "related_requirement": "REQ-5.1.4",
+      "verification": "Must clear to empty state"
+    },
+    {
+      "id": "CC-RESET-ALMOST-FULL",
+      "description": "Reset when FIFO is almost full",
+      "test_required": true,
+      "related_requirement": "REQ-5.1.4",
+      "verification": "Must clear to empty state"
+    },
+    {
+      "id": "CC-RESET-ALMOST-EMPTY",
+      "description": "Reset when FIFO is almost empty",
+      "test_required": true,
+      "related_requirement": "REQ-5.1.4",
+      "verification": "Must clear to empty state"
+    },
+    {
+      "id": "CC-POINTER-WRAP",
+      "description": "Read and write pointer wraparound at boundaries",
+      "test_required": true,
+      "related_requirement": "REQ-5.1.2.3",
+      "verification": "Data ordering maintained across wraparound"
+    },
+    {
+      "id": "CC-RAPID-FILL-EMPTY",
+      "description": "Rapid fill and empty cycles",
+      "test_required": true,
+      "related_requirement": "REQ-5.1.2.3",
+      "verification": "Test state transitions under stress"
+    },
+    {
+      "id": "CC-BACK-TO-BACK",
+      "description": "Back-to-back operations (no idle cycles)",
+      "test_required": true,
+      "related_requirement": "REQ-5.1.2.3",
+      "verification": "Verify correct behavior with continuous operations"
+    },
+    {
+      "id": "CC-DATA-PATTERNS",
+      "description": "Various data patterns (all 0s, all 1s, random, walking patterns)",
+      "test_required": true,
+      "related_requirement": "REQ-5.1.2.3",
+      "verification": "Verify no data corruption"
+    }
+  ],
+
+  "required_assertions": [
+    {
+      "name": "ap_push_error",
+      "description": "Never a push and full and no pop",
+      "property_type": "safety",
+      "sva_code": "sequence q_push_error; !(push && full && !pop); endsequence; ap_push_error : assert property (@(posedge clk) q_push_error);",
+      "related_requirement": "REQ-5.1.2.1"
+    },
+    {
+      "name": "ap_pop_error",
+      "description": "Never a pop on empty",
+      "property_type": "safety",
+      "sva_code": "sequence q_pop_error; !(pop && empty && !push); endsequence; ap_pop_error : assert property (@ (posedge clk) q_pop_error);",
+      "related_requirement": "REQ-5.1.2.2"
+    },
+    {
+      "name": "ap_pop_data",
+      "description": "Data out timing and data integrity",
+      "property_type": "safety",
+      "sva_code": "property p_pop_data; @ (posedge clk) pop |-> data_out == data_fromQ; endproperty; ap_pop_data : assert property (p_pop_data);",
+      "related_requirement": "REQ-5.1.1.2"
+    },
+    {
+      "name": "ap_fifo_full",
+      "description": "Full flag correctly reflects FIFO state when at maximum depth",
+      "property_type": "invariant",
+      "sva_code": "property p_fifo_full; @ (posedge clk) qFull |-> full; endproperty; ap_fifo_full : assert property (p_fifo_full);",
+      "related_requirement": "REQ-5.1.3.1"
+    },
+    {
+      "name": "ap_fifo_almost_full",
+      "description": "Almost full flag at correct threshold (¾ depth)",
+      "property_type": "invariant",
+      "sva_code": "property p_fifo_almost_full; @ (posedge clk) qAlmost_full |-> almost_full; endproperty; ap_fifo_almost_full : assert property (p_fifo_almost_full);",
+      "related_requirement": "REQ-5.1.3.2"
+    },
+    {
+      "name": "ap_fifo_empty",
+      "description": "Empty flag correctly reflects FIFO state when no data",
+      "property_type": "invariant",
+      "sva_code": "property p_fifo_empty; @ (posedge clk) qEmpty |-> empty; endproperty; ap_fifo_empty : assert property (p_fifo_empty);",
+      "related_requirement": "REQ-5.1.3.3"
+    },
+    {
+      "name": "ap_fifo_almost_empty",
+      "description": "Almost empty flag at correct threshold (¼ depth)",
+      "property_type": "invariant",
+      "sva_code": "property p_fifo_almost_empty; @ (posedge clk) qAlmost_empty |-> almost_empty; endproperty; ap_fifo_almost_empty : assert property (p_fifo_almost_empty);",
+      "related_requirement": "REQ-5.1.3.4"
+    },
+    {
+      "name": "ap_fifo_ptrs_flags_at_reset",
+      "description": "Reset brings FIFO to known state (empty, flags cleared)",
+      "property_type": "safety",
+      "sva_code": "property p_fifo_ptrs_flags_at_reset; @ (posedge clk) !reset_n |-> ##[0:1] !almost_empty && !full && !almost_full && empty; endproperty; ap_fifo_ptrs_flags_at_reset : assert property (p_fifo_ptrs_flags_at_reset);",
+      "related_requirement": "REQ-5.1.4"
+    },
+    {
+      "name": "ap_error_flag",
+      "description": "Error flag asserted on overflow or underflow",
+      "property_type": "safety",
+      "sva_code": "property p_error_flag; @ (posedge clk) q_push_error or q_pop_error |=> error; endproperty; ap_error_flag : assert property (p_error_flag);",
+      "related_requirement": "REQ-5.1.6"
+    }
+  ],
+
+  "coverage_requirements": {
+    "code_coverage": 100,
+    "fsm_state_coverage": 100,
+    "fsm_transition_coverage": 100,
+    "toggle_coverage": 95,
+    "functional_coverage": {
+      "description": "All sequences must have coverage count of at least one",
+      "required_sequences": [
+        "p_push_pop_sequencing - push => ##[0:$] pop",
+        "qFull - FIFO full state",
+        "qEmpty - FIFO empty state",
+        "qAlmost_full - FIFO almost full state",
+        "qAlmost_empty - FIFO almost empty state",
+        "qOffull - Transition off full state",
+        "qOffEmpty - Transition off empty state",
+        "qOffAlmost_empty - Transition off almost empty",
+        "qOffAlmost_full - Transition off almost full"
+      ],
+      "covergroups": [
+        "Status flags coverage (full, empty, almost_full, almost_empty)",
+        "Operation types (push only, pop only, simultaneous, idle)",
+        "FIFO fill levels (0 to DEPTH)",
+        "State transitions between fill levels",
+        "Reset at different fill levels"
+      ]
+    }
+  },
+
+  "parameters": {
+    "BIT_DEPTH": {
+      "default": 4,
+      "description": "2**BIT_DEPTH = depth of FIFO",
+      "test_values": [4, 5, 8]
+    },
+    "WIDTH": {
+      "default": 32,
+      "description": "Data width in bits",
+      "test_values": [16, 32]
+    },
+    "ALMOST_FULL": {
+      "formula": "int'(3*FULL / 4)",
+      "description": "Threshold for almost full flag (¾ of depth)"
+    },
+    "ALMOST_EMPTY": {
+      "formula": "int'(FULL/4)",
+      "description": "Threshold for almost empty flag (¼ of depth)"
+    }
+  }
+}
