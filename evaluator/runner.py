@@ -13,9 +13,9 @@ import subprocess
 import time
 
 # Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from benchmark.evaluator.metrics import (
+from evaluator.metrics import (
     EvaluationResult,
     SpecificationExtractor,
     VerificationPlanner,

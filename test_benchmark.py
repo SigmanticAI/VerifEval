@@ -7,10 +7,10 @@ Tests evaluation on existing VerifAgent output.
 import sys
 from pathlib import Path
 
-# Add parent to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add current dir to path
+sys.path.insert(0, str(Path(__file__).parent))
 
-from benchmark.evaluator.metrics import (
+from evaluator.metrics import (
     EvaluationResult,
     SpecificationExtractor,
     VerificationPlanner,
@@ -20,7 +20,7 @@ from benchmark.evaluator.metrics import (
 import json
 
 
-def test_fifo_evaluation():
+def test_fifo_evaluation(custom_output_dir=None):
     """Test evaluation on existing FIFO output."""
     
     print("Testing VerifAgent Benchmark Framework")
@@ -30,20 +30,28 @@ def test_fifo_evaluation():
     benchmark_root = Path(__file__).parent
     design_dir = benchmark_root / 'designs' / 'fifo_sync'
     
-    # Use one of the existing outputs
-    output_root = benchmark_root.parent / 'output'
-    fifo_outputs = [
-        d for d in output_root.iterdir()
-        if d.is_dir() and ('fifo' in d.name.lower() or 'synch' in d.name.lower())
-    ]
+    # Use custom output path or find one
+    if custom_output_dir:
+        output_dir = Path(custom_output_dir)
+        if not output_dir.exists():
+            print(f"ERROR: Directory not found: {output_dir}")
+            return False
+    else:
+        # Use one of the existing outputs
+        output_root = benchmark_root.parent / 'output'
+        fifo_outputs = [
+            d for d in output_root.iterdir()
+            if d.is_dir() and ('fifo' in d.name.lower() or 'synch' in d.name.lower())
+        ]
+        
+        if not fifo_outputs:
+            print("ERROR: No FIFO output found in output/ directory")
+            print("Please run VerifAgent first to generate a FIFO verification")
+            return False
+        
+        # Use the most recent
+        output_dir = max(fifo_outputs, key=lambda d: d.stat().st_mtime)
     
-    if not fifo_outputs:
-        print("ERROR: No FIFO output found in output/ directory")
-        print("Please run VerifAgent first to generate a FIFO verification")
-        return False
-    
-    # Use the most recent
-    output_dir = max(fifo_outputs, key=lambda d: d.stat().st_mtime)
     print(f"\nTesting with output: {output_dir.name}")
     print("-" * 70)
     
@@ -163,6 +171,7 @@ def test_fifo_evaluation():
 
 
 if __name__ == '__main__':
-    success = test_fifo_evaluation()
+    custom_path = sys.argv[1] if len(sys.argv) > 1 else None
+    success = test_fifo_evaluation(custom_path)
     sys.exit(0 if success else 1)
 
