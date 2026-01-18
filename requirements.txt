@@ -14,6 +14,15 @@ rich>=13.0.0                # Pretty terminal output
 # Testing
 pytest>=7.0.0
 
+# TB-Eval (VerifLLMBench methodology)
+cocotb>=2.0.0               # Python-based verification framework
+cocotb-test>=0.2.0          # cocotb test runner
+
+# LLM support for TB-Eval
+anthropic>=0.70.0           # Anthropic Claude API
+openai>=1.0.0               # OpenAI GPT API
+
 # Optional: For PDF generation
 # pandoc (system package)
+# verilator (system package) - required for tb_eval
 
