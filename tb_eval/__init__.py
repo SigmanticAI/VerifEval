@@ -1,13 +1,29 @@
 """
-TB-Eval: UVM/Cocotb Testbench Benchmark Framework
+TB-Eval: Testbench Evaluation Framework
 
-This module implements the methodology from VerifLLMBench paper for
-benchmarking LLM-generated testbenches using open-source tools (Verilator + cocotb).
+Implements the VerifLLMBench methodology for evaluating verification testbenches.
+Supports both single-file and multi-file verification projects.
 
-Reference:
-    VerifLLMBench: An Open-Source Benchmark for Testbenches Generated with Large Language Models
-    Nishanth Somashekara Murthy et al.
+Usage:
+    from tb_eval import TBEvalRunner, EvalConfig
+    
+    runner = TBEvalRunner()
+    results = runner.evaluate(Path("path/to/verification"))
+    print(results.summary())
 """
 
-__version__ = "1.0.0"
+from .config import EvalConfig, VerificationProject, EXAMPLES_DIR
+from .runner import TBEvalRunner
+from .simulator import Simulator, parse_verification_project
+from .coverage_analyzer import EvalMetrics, ProjectResults
 
+__all__ = [
+    'TBEvalRunner',
+    'EvalConfig',
+    'VerificationProject',
+    'Simulator',
+    'parse_verification_project',
+    'EvalMetrics',
+    'ProjectResults',
+    'EXAMPLES_DIR',
+]

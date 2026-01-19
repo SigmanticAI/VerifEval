@@ -1,367 +1,385 @@
 """
-Simulation runner using Verilator + cocotb.
+Simulator for TB-Eval.
 
-Handles compilation, simulation, and coverage collection.
+Handles compilation, simulation, and coverage collection using Verilator + cocotb.
+Supports both single-file and multi-file verification projects.
 """
 
 import os
-import subprocess
+import re
 import shutil
+import subprocess
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
-import json
-import re
 
-from .config import DesignConfig, BenchmarkConfig, DUTS_DIR, GENERATED_DIR, RESULTS_DIR
+from .config import EvalConfig, VerificationProject, WORK_DIR
 
 
 @dataclass
 class SimulationResult:
     """Result of a simulation run."""
-    success: bool
-    build_success: bool
-    sim_success: bool
+    
+    # Build status
+    build_success: bool = False
     build_errors: List[str] = field(default_factory=list)
+    
+    # Simulation status
+    sim_success: bool = False
     sim_errors: List[str] = field(default_factory=list)
     sim_output: str = ""
-    test_results: Dict[str, bool] = field(default_factory=dict)
-    coverage_data: Optional[Dict] = None
+    
+    # Test results
+    tests_passed: int = 0
+    tests_failed: int = 0
+    tests_total: int = 0
+    test_details: Dict[str, bool] = field(default_factory=dict)
+    
+    # Coverage data
+    line_coverage: float = 0.0
+    toggle_coverage: float = 0.0
+    branch_coverage: float = 0.0
+    
+    # Lint results
     lint_errors: int = 0
     lint_warnings: int = 0
+    
+    @property
+    def success(self) -> bool:
+        return self.build_success and self.sim_success
+    
+    @property
+    def average_coverage(self) -> float:
+        """Average of non-zero coverage metrics."""
+        values = [v for v in [self.line_coverage, self.toggle_coverage, 
+                              self.branch_coverage] if v > 0]
+        return sum(values) / len(values) if values else 0.0
 
 
-class VerilatorSimulator:
+class Simulator:
     """Verilator + cocotb simulator."""
     
-    def __init__(self, config: BenchmarkConfig = None):
-        self.config = config or BenchmarkConfig()
-        self._check_dependencies()
+    def __init__(self, config: EvalConfig = None):
+        self.config = config or EvalConfig()
+        self._verify_dependencies()
     
-    def _check_dependencies(self):
-        """Check that required tools are available."""
+    def _verify_dependencies(self):
+        """Verify required tools are available."""
         # Check Verilator
         result = subprocess.run(['which', 'verilator'], capture_output=True, text=True)
         if result.returncode != 0:
-            raise RuntimeError("Verilator not found. Please install Verilator.")
+            raise RuntimeError("Verilator not found. Install with: brew install verilator")
         
-        # Check cocotb is importable
+        # Check cocotb
         try:
             import cocotb
         except ImportError:
-            raise RuntimeError("cocotb not found. Please install: pip install cocotb")
+            raise RuntimeError("cocotb not found. Install with: pip install cocotb")
     
-    def _create_makefile(self, design: DesignConfig, work_dir: Path, 
-                         tb_file: Path) -> Path:
-        """Create a Makefile for cocotb + Verilator simulation."""
+    def run(self, project: VerificationProject, run_id: int = 1) -> SimulationResult:
+        """
+        Run simulation for a verification project.
         
-        dut_path = (DUTS_DIR / design.name / design.dut_file).resolve()
+        Steps:
+        1. Create work directory
+        2. Copy/generate files
+        3. Run simulation
+        4. Collect coverage
+        5. Run lint
+        """
+        result = SimulationResult()
         
-        # Determine top-level signals for cocotb
-        toplevel = design.module_name
-        tb_module = tb_file.stem  # Get module name from file (without .py)
+        # Create work directory
+        work_dir = WORK_DIR / project.name / f"run_{run_id}"
+        work_dir.mkdir(parents=True, exist_ok=True)
         
-        makefile_content = f"""# Cocotb Makefile for {design.name}
+        try:
+            # Set up work directory
+            self._setup_work_dir(project, work_dir)
+            
+            # Run simulation
+            self._run_simulation(work_dir, result)
+            
+            # Parse coverage if simulation succeeded
+            if result.sim_success:
+                self._parse_coverage(work_dir, result)
+            
+            # Run lint
+            if self.config.enable_lint:
+                self._run_lint(project, result)
+                
+        except Exception as e:
+            result.build_errors.append(str(e))
+        
+        finally:
+            # Clean up if requested
+            if not self.config.keep_work_dir and work_dir.exists():
+                shutil.rmtree(work_dir, ignore_errors=True)
+        
+        return result
+    
+    def _setup_work_dir(self, project: VerificationProject, work_dir: Path):
+        """Set up the work directory with all necessary files."""
+        
+        # Copy all project files
+        for f in project.dut_files + project.tb_files + project.support_files:
+            shutil.copy(f, work_dir / f.name)
+        
+        # Copy or generate Makefile
+        if project.makefile and project.makefile.exists():
+            shutil.copy(project.makefile, work_dir / "Makefile")
+        else:
+            self._generate_makefile(project, work_dir)
+    
+    def _generate_makefile(self, project: VerificationProject, work_dir: Path):
+        """Generate a Makefile for the project."""
+        
+        # DUT sources
+        verilog_sources = " ".join([f"$(PWD)/{f.name}" for f in project.dut_files])
+        
+        # Determine top module
+        top_module = project.top_module
+        if not top_module and project.dut_files:
+            # Extract from first DUT file
+            content = project.dut_files[0].read_text()
+            match = re.search(r'module\s+(\w+)', content)
+            if match:
+                top_module = match.group(1)
+        top_module = top_module or "top"
+        
+        # Determine test module
+        test_module = project.test_module
+        if not test_module and project.tb_files:
+            for f in project.tb_files:
+                if f.suffix == '.py' and f.stem.startswith('test_'):
+                    test_module = f.stem
+                    break
+        test_module = test_module or "test"
+        
+        makefile = f"""# Auto-generated Makefile for {project.name}
 
-# Simulator
 SIM ?= verilator
 TOPLEVEL_LANG ?= verilog
 
-# DUT (absolute path)
-VERILOG_SOURCES = {dut_path}
-TOPLEVEL = {toplevel}
-MODULE = {tb_module}
+VERILOG_SOURCES = {verilog_sources}
+TOPLEVEL = {top_module}
+MODULE = {test_module}
 
-# Verilator extra args for coverage
+# Coverage flags
 EXTRA_ARGS += --coverage --coverage-line --coverage-toggle
 EXTRA_ARGS += -Wno-fatal
 EXTRA_ARGS += --trace
 
-# Include cocotb makefiles
 include $(shell cocotb-config --makefiles)/Makefile.sim
 """
         
-        makefile_path = work_dir / "Makefile"
-        makefile_path.write_text(makefile_content)
-        
-        return makefile_path
+        (work_dir / "Makefile").write_text(makefile)
     
-    def _run_lint(self, design: DesignConfig, tb_file: Path) -> Tuple[int, int]:
-        """
-        Run linting on the testbench.
+    def _run_simulation(self, work_dir: Path, result: SimulationResult):
+        """Run the cocotb simulation."""
         
-        Uses Python's built-in ast and pylint if available.
-        Returns (errors, warnings).
-        """
-        errors = 0
-        warnings = 0
-        
-        # Basic Python syntax check
-        code = tb_file.read_text()
-        try:
-            compile(code, str(tb_file), 'exec')
-        except SyntaxError as e:
-            errors += 1
-        
-        # Check for common issues
-        lines = code.split('\n')
-        for i, line in enumerate(lines, 1):
-            # Check for bare except
-            if re.search(r'\bexcept\s*:', line):
-                warnings += 1
-            # Check for print statements without logging
-            if re.search(r'\bprint\s*\(', line) and 'cocotb' not in line.lower():
-                warnings += 1
-            # Check for hardcoded delays without comments
-            if re.search(r'Timer\s*\(\s*\d+', line) and '#' not in line:
-                warnings += 1
-        
-        # Try pylint if available
-        try:
-            result = subprocess.run(
-                ['python', '-m', 'pylint', '--errors-only', str(tb_file)],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            # Count pylint errors
-            for line in result.stdout.split('\n'):
-                if ': E' in line:
-                    errors += 1
-                elif ': W' in line:
-                    warnings += 1
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass  # pylint not available or timed out
-        
-        return errors, warnings
-    
-    def _parse_coverage(self, work_dir: Path) -> Optional[Dict[str, float]]:
-        """Parse Verilator coverage data."""
-        
-        coverage = {
-            "line": 0.0,
-            "toggle": 0.0,
-            "branch": 0.0,
-            "fsm": 0.0,
-            "group": 0.0,
-        }
-        
-        # Look for coverage.dat file - Verilator puts it in parent of sim_build
-        cov_file = work_dir / "coverage.dat"
-        if not cov_file.exists():
-            cov_file = work_dir.parent / "coverage.dat"
-        if not cov_file.exists():
-            # Try finding any coverage.dat file
-            dat_files = list(work_dir.glob("**/coverage.dat"))
-            if dat_files:
-                cov_file = dat_files[0]
-            else:
-                return None
-        
-        # Parse Verilator coverage format
-        # Format: C 'attributes' count
-        try:
-            content = cov_file.read_text()
-            
-            total_toggles = 0
-            covered_toggles = 0
-            total_lines = 0
-            covered_lines = 0
-            total_branches = 0
-            covered_branches = 0
-            
-            for line in content.split('\n'):
-                if not line.startswith('C '):
-                    continue
-                
-                # Parse the coverage line
-                # Format: C 'metadata' count
-                try:
-                    # Extract the count (last part after the quote)
-                    parts = line.rsplit("'", 1)
-                    if len(parts) < 2:
-                        continue
-                    
-                    count_str = parts[1].strip()
-                    count = int(count_str) if count_str.isdigit() else 0
-                    
-                    metadata = parts[0]
-                    
-                    # Determine coverage type from metadata
-                    if 'ttoggle' in metadata or 'v_toggle' in metadata:
-                        # Toggle coverage
-                        total_toggles += 1
-                        if count > 0:
-                            covered_toggles += 1
-                    elif 'tline' in metadata or 'v_line' in metadata:
-                        # Line coverage
-                        total_lines += 1
-                        if count > 0:
-                            covered_lines += 1
-                    elif 'tbranch' in metadata or 'v_branch' in metadata:
-                        # Branch coverage
-                        total_branches += 1
-                        if count > 0:
-                            covered_branches += 1
-                    else:
-                        # Default to toggle for this format
-                        if ':0->1' in metadata or ':1->0' in metadata:
-                            total_toggles += 1
-                            if count > 0:
-                                covered_toggles += 1
-                        
-                except (ValueError, IndexError):
-                    continue
-            
-            # Calculate percentages
-            if total_toggles > 0:
-                coverage["toggle"] = (covered_toggles / total_toggles) * 100
-            if total_lines > 0:
-                coverage["line"] = (covered_lines / total_lines) * 100
-            if total_branches > 0:
-                coverage["branch"] = (covered_branches / total_branches) * 100
-            
-            # For line coverage, if we don't have specific line data,
-            # use toggle as an approximation (all signals exercised = good coverage)
-            if coverage["line"] == 0.0 and coverage["toggle"] > 0:
-                coverage["line"] = coverage["toggle"]
-                
-        except Exception as e:
-            print(f"Warning: Could not parse coverage data: {e}")
-            return None
-        
-        return coverage
-    
-    def _parse_test_results(self, output: str) -> Dict[str, bool]:
-        """Parse test results from cocotb output."""
-        results = {}
-        
-        # Look for test pass/fail lines
-        for line in output.split('\n'):
-            # cocotb format: "test_name passed" or "test_name failed"
-            if 'passed' in line.lower():
-                match = re.search(r'(\w+)\s+passed', line, re.IGNORECASE)
-                if match:
-                    results[match.group(1)] = True
-            elif 'failed' in line.lower():
-                match = re.search(r'(\w+)\s+failed', line, re.IGNORECASE)
-                if match:
-                    results[match.group(1)] = False
-        
-        return results
-    
-    def run_simulation(self, design: DesignConfig, 
-                       tb_file: Path,
-                       run_id: int = 1) -> SimulationResult:
-        """
-        Run simulation for a design with given testbench.
-        
-        Steps:
-        1. Create work directory
-        2. Generate Makefile
-        3. Run cocotb simulation
-        4. Collect coverage data
-        5. Run linting
-        """
-        
-        result = SimulationResult(
-            success=False,
-            build_success=False,
-            sim_success=False
-        )
-        
-        # Create work directory
-        work_dir = GENERATED_DIR / design.name / f"run_{run_id}" / "sim"
-        work_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Copy testbench to work directory
-        dest_tb = work_dir / f"test_{design.name}.py"
-        shutil.copy(tb_file, dest_tb)
-        
-        # Create Makefile
-        self._create_makefile(design, work_dir, dest_tb)
-        
-        # Set up environment
         env = os.environ.copy()
-        env['COCOTB_RESOLVE_X'] = 'ZEROS'  # Handle X values
+        env['COCOTB_RESOLVE_X'] = 'ZEROS'
         
-        # Run simulation
-        print(f"    Running simulation for {design.name} (run {run_id})...")
+        if self.config.verbose:
+            print(f"  Running simulation in {work_dir}...")
         
         try:
             proc = subprocess.run(
                 ['make', '-C', str(work_dir)],
                 capture_output=True,
                 text=True,
-                timeout=self.config.simulation_timeout_ms / 1000,
+                timeout=self.config.simulation_timeout_sec,
                 env=env
             )
             
             result.sim_output = proc.stdout + proc.stderr
             
-            # Check for compilation/build errors (Verilator errors)
-            if '%Error' in proc.stderr or 'verilator' in proc.stderr.lower() and 'error' in proc.stderr.lower():
+            # Check for Verilator errors (build failure)
+            if '%Error' in proc.stderr:
                 result.build_success = False
-                result.build_errors = [l for l in proc.stderr.split('\n') if 'error' in l.lower()]
+                result.build_errors = [l for l in proc.stderr.split('\n') 
+                                       if '%Error' in l or 'error' in l.lower()]
             else:
-                # Build was successful
                 result.build_success = True
                 
-                # Check if simulation actually ran (look for cocotb output)
+                # Check for cocotb output (simulation ran)
                 if 'cocotb' in result.sim_output.lower() or 'TESTS=' in result.sim_output:
                     result.sim_success = True
-                    
-                    # Parse test results from output
-                    result.test_results = self._parse_test_results(result.sim_output)
-                    
-                    # Note: Test failures don't mean simulation failed
-                    # Simulation success means it ran, test results are separate
+                    self._parse_test_results(result)
                 else:
                     result.sim_success = False
-                    result.sim_errors = ["Simulation did not produce expected output"]
-            
-            # Parse coverage if simulation succeeded
-            if result.sim_success:
-                result.coverage_data = self._parse_coverage(work_dir)
-            
+                    result.sim_errors.append("Simulation did not produce expected output")
+                    
         except subprocess.TimeoutExpired:
-            result.sim_errors = ["Simulation timed out"]
+            result.sim_errors.append(f"Simulation timed out after {self.config.simulation_timeout_sec}s")
         except Exception as e:
-            result.sim_errors = [str(e)]
-        
-        # Run linting regardless of simulation success
-        result.lint_errors, result.lint_warnings = self._run_lint(design, tb_file)
-        
-        # Overall success
-        result.success = result.build_success and result.sim_success
-        
-        return result
-
-
-def run_verilator_lint_only(design: DesignConfig) -> Tuple[int, int]:
-    """Run Verilator lint only on DUT."""
+            result.sim_errors.append(str(e))
     
-    dut_path = DUTS_DIR / design.name / design.dut_file
-    
-    errors = 0
-    warnings = 0
-    
-    try:
-        result = subprocess.run(
-            ['verilator', '--lint-only', '-Wall', str(dut_path)],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
+    def _parse_test_results(self, result: SimulationResult):
+        """Parse test results from cocotb output."""
         
-        for line in result.stderr.split('\n'):
-            if '%Error' in line:
-                errors += 1
-            elif '%Warning' in line:
-                warnings += 1
+        # Look for summary: TESTS=N PASS=N FAIL=N
+        match = re.search(r'TESTS=(\d+)\s+PASS=(\d+)\s+FAIL=(\d+)', result.sim_output)
+        if match:
+            result.tests_total = int(match.group(1))
+            result.tests_passed = int(match.group(2))
+            result.tests_failed = int(match.group(3))
+        
+        # Parse individual test results
+        for line in result.sim_output.split('\n'):
+            if 'passed' in line.lower():
+                match = re.search(r'(\w+)\s+passed', line, re.IGNORECASE)
+                if match:
+                    result.test_details[match.group(1)] = True
+            elif 'failed' in line.lower():
+                match = re.search(r'(\w+)\s+failed', line, re.IGNORECASE)
+                if match:
+                    result.test_details[match.group(1)] = False
+    
+    def _parse_coverage(self, work_dir: Path, result: SimulationResult):
+        """Parse Verilator coverage data."""
+        
+        # Find coverage.dat file
+        cov_file = work_dir / "coverage.dat"
+        if not cov_file.exists():
+            for f in work_dir.glob("**/coverage.dat"):
+                cov_file = f
+                break
+        
+        if not cov_file.exists():
+            return
+        
+        try:
+            content = cov_file.read_text()
+            
+            # Count coverage points
+            line_total, line_covered = 0, 0
+            toggle_total, toggle_covered = 0, 0
+            branch_total, branch_covered = 0, 0
+            
+            for line in content.split('\n'):
+                if not line.startswith('C '):
+                    continue
                 
-    except Exception as e:
-        print(f"Warning: Verilator lint failed: {e}")
+                try:
+                    # Format: C 'metadata' count
+                    parts = line.rsplit("'", 1)
+                    if len(parts) < 2:
+                        continue
+                    
+                    count = int(parts[1].strip()) if parts[1].strip().isdigit() else 0
+                    metadata = parts[0]
+                    
+                    # Classify coverage type
+                    if ':0->1' in metadata or ':1->0' in metadata:
+                        toggle_total += 1
+                        if count > 0:
+                            toggle_covered += 1
+                    elif 'v_line' in metadata or 'tline' in metadata:
+                        line_total += 1
+                        if count > 0:
+                            line_covered += 1
+                    elif 'v_branch' in metadata or 'tbranch' in metadata:
+                        branch_total += 1
+                        if count > 0:
+                            branch_covered += 1
+                            
+                except (ValueError, IndexError):
+                    continue
+            
+            # Calculate percentages
+            if toggle_total > 0:
+                result.toggle_coverage = (toggle_covered / toggle_total) * 100
+            if line_total > 0:
+                result.line_coverage = (line_covered / line_total) * 100
+            if branch_total > 0:
+                result.branch_coverage = (branch_covered / branch_total) * 100
+            
+            # Use toggle as approximation for line if line not available
+            if result.line_coverage == 0 and result.toggle_coverage > 0:
+                result.line_coverage = result.toggle_coverage
+                
+        except Exception as e:
+            if self.config.verbose:
+                print(f"  Warning: Could not parse coverage: {e}")
     
-    return errors, warnings
+    def _run_lint(self, project: VerificationProject, result: SimulationResult):
+        """Run linting on testbench files."""
+        
+        for tb_file in project.tb_files:
+            if tb_file.suffix != '.py':
+                continue
+            
+            try:
+                code = tb_file.read_text()
+                
+                # Basic Python syntax check
+                try:
+                    compile(code, str(tb_file), 'exec')
+                except SyntaxError:
+                    result.lint_errors += 1
+                
+                # Check for common issues
+                for line in code.split('\n'):
+                    if re.search(r'\bexcept\s*:', line):
+                        result.lint_warnings += 1
+                    if re.search(r'\bprint\s*\(', line) and 'cocotb' not in line.lower():
+                        result.lint_warnings += 1
+                        
+            except Exception:
+                pass
 
+
+def parse_verification_project(folder_path: Path) -> VerificationProject:
+    """
+    Parse a folder to create a VerificationProject.
+    
+    Identifies:
+    - .v/.sv files -> DUT files
+    - test_*.py files -> Testbench files  
+    - Other .py files -> Support files
+    - Makefile -> Build configuration
+    """
+    
+    if not folder_path.exists():
+        raise ValueError(f"Folder does not exist: {folder_path}")
+    
+    project = VerificationProject(path=folder_path)
+    
+    for file in folder_path.iterdir():
+        if not file.is_file():
+            continue
+        
+        suffix = file.suffix.lower()
+        name = file.stem.lower()
+        
+        if suffix in ['.v', '.sv']:
+            # Verilog/SystemVerilog -> DUT (unless it's a testbench)
+            if 'tb' in name or 'test' in name:
+                continue  # Skip Verilog testbenches
+            project.dut_files.append(file)
+            
+        elif suffix == '.py':
+            # Python files
+            if name.startswith('test_') or name.endswith('_test'):
+                project.tb_files.append(file)
+            elif name != '__pycache__':
+                project.support_files.append(file)
+                
+        elif file.name.lower() == 'makefile':
+            project.makefile = file
+    
+    # Parse Makefile for module info
+    if project.makefile:
+        content = project.makefile.read_text()
+        
+        match = re.search(r'TOPLEVEL\s*[?:]?=\s*(\w+)', content)
+        if match:
+            project.top_module = match.group(1)
+        
+        match = re.search(r'MODULE\s*[?:]?=\s*(\w+)', content)
+        if match:
+            project.test_module = match.group(1)
+    
+    return project

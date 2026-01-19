@@ -1,266 +1,210 @@
 """
-Main benchmark runner for TB-Eval.
+TB-Eval Runner.
 
-Implements the full VerifLLMBench methodology:
-1. For each design
-2. Generate testbench using LLM
-3. Iterate to fix syntax errors (up to 4 times)
-4. Run simulation with coverage
-5. Collect and analyze metrics
+Main entry point for testbench evaluation based on VerifLLMBench methodology.
+Evaluates existing verification projects (single-file or multi-file).
+
+NO LLM generation - assumes verification files already exist.
 """
 
 import sys
 import argparse
 from pathlib import Path
 from typing import List, Optional
-import time
 
-from .config import (
-    BenchmarkConfig, 
-    DesignConfig,
-    DESIGNS, 
-    get_design_config,
-    get_all_design_names,
-    RESULTS_DIR
-)
-from .llm_generator import TestbenchGenerator, GenerationResult
-from .simulator import VerilatorSimulator, SimulationResult
-from .coverage_analyzer import (
-    CoverageMetrics,
-    DesignMetrics,
-    BenchmarkResults,
-    save_results
-)
+from .config import EvalConfig, VerificationProject, EXAMPLES_DIR, WORK_DIR
+from .simulator import Simulator, parse_verification_project, SimulationResult
+from .coverage_analyzer import EvalMetrics, ProjectResults, save_results, print_results_table
 
 
 class TBEvalRunner:
-    """Main benchmark runner."""
+    """
+    Main evaluation runner.
     
-    def __init__(self, 
-                 config: BenchmarkConfig = None,
-                 llm_provider: str = "anthropic"):
-        self.config = config or BenchmarkConfig()
-        self.llm_provider = llm_provider
-        self.generator = TestbenchGenerator(config=self.config, provider=llm_provider)
-        self.simulator = VerilatorSimulator(config=self.config)
-        self.results = BenchmarkResults(llm_provider=llm_provider)
+    Supports both single-file and multi-file verification projects.
+    Collects metrics per the VerifLLMBench paper:
+    - Build success rate
+    - Coverage (line, toggle, branch)
+    - Lint errors/warnings
+    """
     
-    def run_design(self, design_name: str, 
-                   num_runs: int = None) -> DesignMetrics:
+    def __init__(self, config: EvalConfig = None):
+        self.config = config or EvalConfig()
+        self.simulator = Simulator(config=self.config)
+    
+    def evaluate(self, project_path: Path, num_runs: int = 1) -> ProjectResults:
         """
-        Run benchmark on a single design.
+        Evaluate a verification project.
         
-        Following the paper:
-        - Generate testbench with LLM
-        - Fix syntax errors iteratively (up to 4 iterations)
-        - Run simulation and collect coverage
-        - Run lint checks
+        Args:
+            project_path: Path to verification folder
+            num_runs: Number of evaluation runs (for consistency checking)
+            
+        Returns:
+            ProjectResults with aggregated metrics
         """
         
-        num_runs = num_runs or self.config.num_test_runs
-        design = get_design_config(design_name)
+        # Parse project structure
+        project = parse_verification_project(project_path)
         
-        print(f"\n{'='*60}")
-        print(f"Benchmarking design: {design_name}")
-        print(f"{'='*60}")
+        if not project.dut_files:
+            raise ValueError(f"No DUT files (.v/.sv) found in {project_path}")
+        if not project.tb_files:
+            raise ValueError(f"No testbench files (test_*.py) found in {project_path}")
         
-        metrics = DesignMetrics(design_name=design_name, num_runs=num_runs)
+        results = ProjectResults(project_name=project.name)
+        
+        print(f"\n{'='*50}")
+        print(f"Evaluating: {project.name}")
+        print(f"{'='*50}")
+        print(f"  DUT files: {[f.name for f in project.dut_files]}")
+        print(f"  TB files: {[f.name for f in project.tb_files]}")
+        if project.support_files:
+            print(f"  Support files: {[f.name for f in project.support_files]}")
+        print(f"  Type: {'Multi-file' if project.is_multi_file else 'Single-file'}")
         
         for run_id in range(1, num_runs + 1):
-            print(f"\n--- Run {run_id}/{num_runs} ---")
+            if num_runs > 1:
+                print(f"\n--- Run {run_id}/{num_runs} ---")
             
-            # Step 1: Generate testbench
-            gen_result = self.generator.generate_testbench(design, run_id)
+            # Run simulation
+            sim_result = self.simulator.run(project, run_id)
             
-            if not gen_result.success:
-                print(f"    ✗ Generation failed: {gen_result.error_message}")
-                metrics.lint_errors.append(0)
-                metrics.lint_warnings.append(0)
-                continue
+            # Convert to metrics
+            metrics = EvalMetrics(
+                build_success=sim_result.build_success,
+                sim_success=sim_result.sim_success,
+                tests_passed=sim_result.tests_passed,
+                tests_failed=sim_result.tests_failed,
+                tests_total=sim_result.tests_total,
+                line_coverage=sim_result.line_coverage,
+                toggle_coverage=sim_result.toggle_coverage,
+                branch_coverage=sim_result.branch_coverage,
+                lint_errors=sim_result.lint_errors,
+                lint_warnings=sim_result.lint_warnings,
+            )
             
-            # Get the testbench file path
-            from .config import GENERATED_DIR
-            tb_file = GENERATED_DIR / design_name / f"run_{run_id}" / f"test_{design_name}.py"
+            results.add_run(metrics)
             
-            if not tb_file.exists():
-                print(f"    ✗ Testbench file not found: {tb_file}")
-                continue
-            
-            # Step 2: Run simulation
-            sim_result = self.simulator.run_simulation(design, tb_file, run_id)
-            
-            # Record lint stats
-            metrics.lint_errors.append(sim_result.lint_errors)
-            metrics.lint_warnings.append(sim_result.lint_warnings)
-            
+            # Print status
             if sim_result.build_success:
-                metrics.build_successes += 1
-                print(f"    ✓ Build successful")
+                print(f"  ✓ Build successful")
             else:
-                print(f"    ✗ Build failed: {sim_result.build_errors[:2]}")  # Show first 2 errors
+                print(f"  ✗ Build failed")
+                for err in sim_result.build_errors[:3]:
+                    print(f"      {err[:80]}")
                 continue
             
             if sim_result.sim_success:
-                metrics.sim_successes += 1
-                print(f"    ✓ Simulation successful")
-                
-                # Record coverage
-                if sim_result.coverage_data:
-                    cov = CoverageMetrics(
-                        line=sim_result.coverage_data.get("line", 0.0),
-                        toggle=sim_result.coverage_data.get("toggle", 0.0),
-                        branch=sim_result.coverage_data.get("branch", 0.0),
-                        conditional=sim_result.coverage_data.get("conditional", 0.0),
-                        fsm=sim_result.coverage_data.get("fsm", 0.0),
-                        group=sim_result.coverage_data.get("group", 0.0),
-                    )
-                    metrics.coverage_runs.append(cov)
-                    print(f"    Coverage: {cov.average():.1f}%")
+                print(f"  ✓ Simulation successful")
+                print(f"    Tests: {sim_result.tests_passed}/{sim_result.tests_total} passed")
+                print(f"    Coverage: {sim_result.average_coverage:.1f}%")
             else:
-                print(f"    ✗ Simulation failed: {sim_result.sim_errors[:2]}")
-            
-            # Print test results
-            if sim_result.test_results:
-                passed = sum(1 for v in sim_result.test_results.values() if v)
-                total = len(sim_result.test_results)
-                print(f"    Tests: {passed}/{total} passed")
+                print(f"  ✗ Simulation failed")
+                for err in sim_result.sim_errors[:3]:
+                    print(f"      {err[:80]}")
         
-        # Print summary
-        print(f"\n{design_name} Summary:")
-        print(f"  Build success rate: {metrics.build_success_rate:.1f}%")
-        print(f"  Simulation success rate: {metrics.sim_success_rate:.1f}%")
-        
-        if metrics.coverage_runs:
-            avg_cov = sum(c.average() for c in metrics.coverage_runs) / len(metrics.coverage_runs)
-            print(f"  Average coverage: {avg_cov:.1f}%")
-        
-        lint_stats = metrics.get_lint_stats()
-        print(f"  Avg lint errors/warnings: {lint_stats['avg_errors']:.1f}/{lint_stats['avg_warnings']:.1f}")
-        
-        return metrics
+        return results
     
-    def run_all(self, designs: List[str] = None, 
-                num_runs: int = None) -> BenchmarkResults:
-        """
-        Run benchmark on all (or specified) designs.
-        """
+    def evaluate_multiple(self, project_paths: List[Path], 
+                          num_runs: int = 1) -> List[ProjectResults]:
+        """Evaluate multiple verification projects."""
         
-        designs = designs or get_all_design_names()
+        all_results = []
         
-        print(f"\n{'#'*60}")
-        print(f"TB-Eval Benchmark")
-        print(f"LLM Provider: {self.llm_provider}")
-        print(f"Designs: {', '.join(designs)}")
-        print(f"Runs per design: {num_runs or self.config.num_test_runs}")
-        print(f"{'#'*60}")
-        
-        start_time = time.time()
-        
-        for design_name in designs:
+        for path in project_paths:
             try:
-                metrics = self.run_design(design_name, num_runs)
-                self.results.add_design_result(metrics)
+                results = self.evaluate(path, num_runs)
+                all_results.append(results)
+                print(results.summary())
             except Exception as e:
-                print(f"\nError benchmarking {design_name}: {e}")
-                import traceback
-                traceback.print_exc()
+                print(f"\n✗ Error evaluating {path}: {e}")
         
-        elapsed = time.time() - start_time
-        
-        # Print final summary
-        self._print_summary(elapsed)
-        
-        # Save results
-        save_results(self.results, RESULTS_DIR)
-        
-        return self.results
-    
-    def _print_summary(self, elapsed_time: float):
-        """Print final benchmark summary."""
-        
-        print(f"\n{'='*60}")
-        print("BENCHMARK SUMMARY")
-        print(f"{'='*60}")
-        
-        print(f"\nLLM Provider: {self.llm_provider}")
-        print(f"Time elapsed: {elapsed_time:.1f}s")
-        
-        print(f"\nOverall Build Success Rate: {self.results.get_overall_build_rate():.1f}%")
-        print(f"Overall Average Coverage: {self.results.get_overall_coverage():.1f}%")
-        
-        print(f"\n{self.results.to_markdown_table()}")
+        return all_results
 
 
 def main():
-    """Main entry point for TB-Eval benchmark."""
+    """CLI entry point for tb_eval."""
     
     parser = argparse.ArgumentParser(
-        description="TB-Eval: Testbench Generation Benchmark",
+        description="TB-Eval: Testbench Evaluation (VerifLLMBench methodology)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Run benchmark on all designs with default settings
-  python -m tb_eval.runner --all
+  # Evaluate a single verification project
+  python -m tb_eval.runner --project path/to/verif
   
-  # Run on specific design
-  python -m tb_eval.runner --design accu
+  # Evaluate with multiple runs for consistency
+  python -m tb_eval.runner --project path/to/verif --runs 3
   
-  # Use OpenAI instead of Anthropic
-  python -m tb_eval.runner --all --llm openai
+  # Evaluate multiple projects
+  python -m tb_eval.runner --projects path/to/verif1 path/to/verif2
   
-  # Run with fewer iterations for quick testing
-  python -m tb_eval.runner --design adder_8bit --runs 2
+  # Run built-in examples
+  python -m tb_eval.runner --examples
         """
     )
     
-    parser.add_argument('--all', action='store_true',
-                       help='Run benchmark on all designs')
-    parser.add_argument('--design', type=str,
-                       help='Run benchmark on specific design')
-    parser.add_argument('--designs', type=str, nargs='+',
-                       help='Run benchmark on multiple specific designs')
-    parser.add_argument('--llm', type=str, default='anthropic',
-                       choices=['anthropic', 'openai'],
-                       help='LLM provider to use (default: anthropic)')
-    parser.add_argument('--runs', type=int, default=5,
-                       help='Number of test runs per design (default: 5)')
-    parser.add_argument('--max-iterations', type=int, default=4,
-                       help='Max iterations for syntax error fixing (default: 4)')
-    parser.add_argument('--list-designs', action='store_true',
-                       help='List available designs and exit')
+    parser.add_argument('--project', type=Path,
+                        help='Path to verification project folder')
+    parser.add_argument('--projects', type=Path, nargs='+',
+                        help='Paths to multiple verification projects')
+    parser.add_argument('--runs', type=int, default=1,
+                        help='Number of evaluation runs (default: 1)')
+    parser.add_argument('--examples', action='store_true',
+                        help='Run built-in example projects')
+    parser.add_argument('--verbose', action='store_true',
+                        help='Enable verbose output')
+    parser.add_argument('--keep-work', action='store_true',
+                        help='Keep work directory after evaluation')
+    parser.add_argument('--output', type=Path,
+                        help='Output directory for results JSON')
     
     args = parser.parse_args()
     
-    if args.list_designs:
-        print("Available designs:")
-        for name in get_all_design_names():
-            design = get_design_config(name)
-            print(f"  {name}: {design.description[:60]}...")
-        return
-    
-    if not (args.all or args.design or args.designs):
-        parser.print_help()
-        print("\nError: Please specify --all, --design, or --designs")
-        sys.exit(1)
-    
     # Build config
-    config = BenchmarkConfig(
-        max_iterations=args.max_iterations,
-        num_test_runs=args.runs
+    config = EvalConfig(
+        verbose=args.verbose,
+        keep_work_dir=args.keep_work,
     )
     
-    # Create runner
-    runner = TBEvalRunner(config=config, llm_provider=args.llm)
+    runner = TBEvalRunner(config=config)
     
-    # Run benchmark
-    if args.all:
-        runner.run_all(num_runs=args.runs)
-    elif args.designs:
-        runner.run_all(designs=args.designs, num_runs=args.runs)
-    elif args.design:
-        runner.run_all(designs=[args.design], num_runs=args.runs)
+    # Determine what to evaluate
+    if args.examples:
+        # Run built-in examples
+        if not EXAMPLES_DIR.exists():
+            print(f"Examples directory not found: {EXAMPLES_DIR}")
+            sys.exit(1)
+        
+        example_dirs = [d for d in EXAMPLES_DIR.iterdir() if d.is_dir()]
+        if not example_dirs:
+            print("No example projects found")
+            sys.exit(1)
+        
+        results = runner.evaluate_multiple(example_dirs, args.runs)
+        
+    elif args.project:
+        results = [runner.evaluate(args.project, args.runs)]
+        
+    elif args.projects:
+        results = runner.evaluate_multiple(args.projects, args.runs)
+        
+    else:
+        parser.print_help()
+        print("\nError: Specify --project, --projects, or --examples")
+        sys.exit(1)
+    
+    # Print summary table
+    print_results_table(results)
+    
+    # Save results if requested
+    if args.output:
+        for r in results:
+            output_path = args.output / f"{r.project_name}_results.json"
+            save_results(r, output_path)
+            print(f"\nResults saved to: {output_path}")
 
 
 if __name__ == '__main__':
     main()
-

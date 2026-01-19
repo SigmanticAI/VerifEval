@@ -1,14 +1,14 @@
-# TB-Eval: Testbench Generation Benchmark
+# TB-Eval: Testbench Evaluation Framework
 
-This module implements the methodology from the **VerifLLMBench** paper for benchmarking LLM-generated testbenches using open-source tools.
+Implements the **VerifLLMBench** paper methodology for evaluating verification testbenches.
 
-## Overview
+## What This Does
 
-TB-Eval supports three evaluation modes:
+TB-Eval evaluates **existing** verification projects (no LLM generation). It measures:
 
-1. **tb_eval** - Generate testbenches using LLMs and measure coverage
-2. **folder_eval** - Evaluate existing verification folders
-3. **spec_eval** - Original specification-based evaluation
+1. **Build Success Rate** - Does the testbench compile with Verilator?
+2. **Coverage Metrics** - Line, toggle, and branch coverage
+3. **Lint Errors/Warnings** - Code quality issues
 
 ## Requirements
 
@@ -17,89 +17,133 @@ TB-Eval supports three evaluation modes:
 # macOS
 brew install verilator
 
-# Linux (Ubuntu)
+# Linux
 apt install verilator
 ```
 
 ### Python Dependencies
 ```bash
-pip install cocotb cocotb-test anthropic openai
+pip install cocotb
 ```
 
 ## Usage
 
-### Evaluate a Verification Folder
+### Evaluate a Project
 ```bash
-# Single folder with DUT + testbench
-python run_eval.py --eval folder_eval --folder path/to/verif
+# Single project
+python -m tb_eval.runner --project path/to/verification
 
-# Example with included FIFO test
-python run_eval.py --eval folder_eval --folder tb_eval/test_verif/fifo_sc
+# Multiple projects
+python -m tb_eval.runner --projects path/to/proj1 path/to/proj2
+
+# Multiple runs for consistency checking
+python -m tb_eval.runner --project path/to/verif --runs 3
 ```
 
-### LLM-Based Testbench Generation
+### Run Built-in Examples
 ```bash
-# Set API key
-export ANTHROPIC_API_KEY="your-key"
-
-# Run on all designs
-python run_eval.py --eval tb_eval --all
-
-# Run on specific design
-python run_eval.py --eval tb_eval --design accu --runs 2
+python -m tb_eval.runner --examples
 ```
 
-### Quick Framework Test
+### From run_eval.py
 ```bash
-python tb_eval/test_framework.py
+python run_eval.py --eval tb_eval --project tb_eval/examples/adder_single
+python run_eval.py --eval tb_eval --project tb_eval/examples/fifo_multi
 ```
 
-## Verification Folder Structure
+## Project Structure
 
-A verification folder should contain:
+A verification project folder should contain:
+
 ```
-my_verif/
-├── dut.v              # DUT Verilog file(s)
-├── test_dut.py        # Main cocotb test file
-├── dut_if.py          # Interface (optional)
-├── dut_driver.py      # Driver (optional)
-├── dut_monitor.py     # Monitor (optional)
-├── dut_scoreboard.py  # Scoreboard (optional)
-├── dut_env.py         # Environment (optional)
-└── Makefile           # Build configuration (optional, auto-generated)
+my_project/
+├── dut.v              # DUT Verilog/SystemVerilog file(s)
+├── test_dut.py        # cocotb test file (must start with test_)
+├── support.py         # Optional support files (drivers, monitors, etc.)
+└── Makefile           # Optional (auto-generated if missing)
 ```
 
-## Included Test Designs
+### Single-File Example (`examples/adder_single/`)
+```
+adder_single/
+├── adder.v           # Simple 8-bit adder DUT
+└── test_adder.py     # Self-contained cocotb testbench
+```
 
-| Design | Description |
+### Multi-File Example (`examples/fifo_multi/`)
+```
+fifo_multi/
+├── fifo.v              # Synchronous FIFO DUT
+├── fifo_interface.py   # Signal interface wrapper
+├── fifo_driver.py      # Stimulus driver
+├── fifo_monitor.py     # Transaction monitor
+├── fifo_scoreboard.py  # Reference model checker
+├── fifo_env.py         # Environment (connects components)
+└── test_fifo.py        # Top-level tests
+```
+
+## Metrics (from VerifLLMBench Paper)
+
+| Metric | Description |
 |--------|-------------|
-| accu | 8-bit accumulator |
-| adder_8bit | 8-bit ripple carry adder |
-| adder_16bit | 16-bit hierarchical adder |
-| fsm | Mealy FSM sequence detector |
-| alu | 32-bit MIPS ALU |
-| fifo_sc | Synchronous FIFO (multi-file example) |
+| Build Success | % of runs where Verilator compilation succeeds |
+| Line Coverage | % of RTL code lines executed |
+| Toggle Coverage | % of signals that toggled both 0→1 and 1→0 |
+| Branch Coverage | % of if/case branches taken |
+| Lint Errors | Syntax and code quality issues |
 
-## Coverage Metrics
+## Example Output
 
-- **Line coverage**: % of RTL lines executed
-- **Toggle coverage**: % of signals toggled
-- **Branch coverage**: % of branches taken
+```
+==================================================
+Evaluating: fifo_multi
+==================================================
+  DUT files: ['fifo.v']
+  TB files: ['test_fifo.py']
+  Support files: ['fifo_interface.py', 'fifo_driver.py', ...]
+  Type: Multi-file
 
-## Directory Structure
+  ✓ Build successful
+  ✓ Simulation successful
+    Tests: 7/7 passed
+    Coverage: 85.2%
+
+==================================================
+Project: fifo_multi
+==================================================
+
+Build Success Rate: 100.0%
+Simulation Success Rate: 100.0%
+
+Coverage (avg of successful runs):
+  Line:   85.2%
+  Toggle: 85.2%
+  Branch: 0.0%
+  Overall Average: 85.2%
+
+Lint: 0.0 errors, 2.0 warnings (avg)
+```
+
+## Directory Layout
 
 ```
 tb_eval/
-├── __init__.py
-├── config.py              # Configuration
-├── prompt_generator.py    # LLM prompt generation
-├── llm_generator.py       # LLM client
-├── simulator.py           # Verilator + cocotb
-├── coverage_analyzer.py   # Coverage metrics
-├── folder_evaluator.py    # Folder evaluation
-├── runner.py              # Main runner
-├── test_framework.py      # Validation tests
-├── duts/                  # Built-in DUTs
-└── test_verif/            # Example verification folders
-    └── fifo_sc/           # Multi-file FIFO example
+├── __init__.py           # Package exports
+├── config.py             # Configuration classes
+├── runner.py             # Main evaluation runner
+├── simulator.py          # Verilator + cocotb simulation
+├── coverage_analyzer.py  # Metrics collection
+├── README.md             # This file
+└── examples/             # Built-in test examples
+    ├── adder_single/     # Single-file example
+    └── fifo_multi/       # Multi-file example
 ```
+
+## Key Differences from Paper
+
+| Paper | This Implementation |
+|-------|---------------------|
+| UVM + VCS | cocotb + Verilator |
+| Commercial tools | Open-source only |
+| FSM/Group coverage | Not available in Verilator |
+| LLM generation | Evaluation only (no generation) |

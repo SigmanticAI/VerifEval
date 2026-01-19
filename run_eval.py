@@ -2,15 +2,14 @@
 """
 VerifEval - Unified Evaluation Runner
 
-Allows selection between different evaluation modes:
+Evaluation modes:
 - spec_eval: Original specification-based evaluation (existing)
-- tb_eval: Testbench generation benchmark (VerifLLMBench methodology)
-- folder_eval: Evaluate a folder containing verification files
+- tb_eval: Testbench evaluation (VerifLLMBench methodology)
 
 Usage:
-    python run_eval.py --eval tb_eval --all
+    python run_eval.py --eval tb_eval --project tb_eval/examples/adder_single
+    python run_eval.py --eval tb_eval --examples
     python run_eval.py --eval spec_eval --design fifo_sync
-    python run_eval.py --eval folder_eval --folder path/to/verif
 """
 
 import sys
@@ -39,86 +38,66 @@ def run_spec_eval(args):
 
 
 def run_tb_eval(args):
-    """Run the testbench generation benchmark (VerifLLMBench methodology)."""
+    """
+    Run testbench evaluation (VerifLLMBench methodology).
+    
+    Evaluates existing verification projects - NO LLM generation.
+    Supports both single-file and multi-file verification.
+    """
     sys.path.insert(0, str(Path(__file__).parent))
     
     from tb_eval.runner import TBEvalRunner
-    from tb_eval.config import BenchmarkConfig, get_all_design_names
+    from tb_eval.config import EvalConfig, EXAMPLES_DIR
+    from tb_eval.coverage_analyzer import print_results_table
     
-    config = BenchmarkConfig(
-        max_iterations=args.max_iterations,
-        num_test_runs=args.runs
+    config = EvalConfig(
+        verbose=args.verbose,
+        keep_work_dir=args.keep_work,
     )
     
-    runner = TBEvalRunner(config=config, llm_provider=args.llm)
+    runner = TBEvalRunner(config=config)
     
-    if args.all:
-        runner.run_all(num_runs=args.runs)
-    elif args.designs:
-        runner.run_all(designs=args.designs, num_runs=args.runs)
-    elif args.design:
-        runner.run_all(designs=[args.design], num_runs=args.runs)
-    else:
-        print("Error: Please specify --all, --design, or --designs for tb_eval")
-        print(f"Available designs: {', '.join(get_all_design_names())}")
-        sys.exit(1)
-
-
-def run_folder_eval(args):
-    """Run evaluation on a verification folder."""
-    sys.path.insert(0, str(Path(__file__).parent))
-    
-    from tb_eval.folder_evaluator import FolderEvaluator
-    from tb_eval.config import BenchmarkConfig
-    
-    if not args.folder:
-        print("Error: Please specify --folder for folder_eval")
-        sys.exit(1)
-    
-    folder_path = Path(args.folder)
-    if not folder_path.exists():
-        print(f"Error: Folder does not exist: {folder_path}")
-        sys.exit(1)
-    
-    config = BenchmarkConfig(num_test_runs=args.runs)
-    evaluator = FolderEvaluator(config=config)
-    
-    print(f"\n{'='*60}")
-    print(f"FOLDER EVALUATION: {folder_path.name}")
-    print(f"{'='*60}")
-    
-    # Check if it's a single folder or contains multiple folders
-    subfolders = [f for f in folder_path.iterdir() if f.is_dir()]
-    has_verif_files = any(f.suffix in ['.py', '.v', '.sv'] for f in folder_path.iterdir() if f.is_file())
-    
-    if has_verif_files:
-        # Single folder with verification files
-        results = evaluator.evaluate(folder_path, num_runs=args.runs)
-        all_results = {folder_path.name: results}
-    else:
-        # Multiple subfolders
-        folder_paths = [f for f in subfolders if any(
-            sf.suffix in ['.py', '.v', '.sv'] for sf in f.iterdir() if sf.is_file()
-        )]
-        
-        if not folder_paths:
-            print("Error: No verification files found in folder or subfolders")
+    if args.examples:
+        # Run built-in examples
+        if not EXAMPLES_DIR.exists():
+            print(f"Error: Examples directory not found: {EXAMPLES_DIR}")
             sys.exit(1)
         
-        all_results = evaluator.evaluate_multiple(folder_paths)
+        example_dirs = [d for d in EXAMPLES_DIR.iterdir() if d.is_dir()]
+        if not example_dirs:
+            print("Error: No example projects found")
+            sys.exit(1)
+        
+        results = runner.evaluate_multiple(example_dirs, args.runs)
+        
+    elif args.project:
+        project_path = Path(args.project)
+        if not project_path.exists():
+            print(f"Error: Project not found: {project_path}")
+            sys.exit(1)
+        results = [runner.evaluate(project_path, args.runs)]
+        
+    elif args.projects:
+        project_paths = [Path(p) for p in args.projects]
+        for p in project_paths:
+            if not p.exists():
+                print(f"Error: Project not found: {p}")
+                sys.exit(1)
+        results = runner.evaluate_multiple(project_paths, args.runs)
+        
+    else:
+        print("Error: Please specify --project, --projects, or --examples for tb_eval")
+        print("\nExample usage:")
+        print("  python run_eval.py --eval tb_eval --examples")
+        print("  python run_eval.py --eval tb_eval --project tb_eval/examples/adder_single")
+        sys.exit(1)
     
-    # Print report
-    report = evaluator.generate_report(all_results)
-    print(report)
+    # Print summary table
+    print_results_table(results)
     
-    # Return success status
-    total_success = sum(
-        1 for results in all_results.values() 
-        for r in results if r.success
-    )
-    total_runs = sum(len(results) for results in all_results.values())
-    
-    return total_success == total_runs
+    # Return success based on build rate
+    total_success = sum(1 for r in results if r.build_success_rate == 100)
+    return total_success == len(results)
 
 
 def main():
@@ -127,93 +106,67 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Evaluation Modes:
-  spec_eval   - Original specification-based evaluation
+  spec_eval   - Specification-based evaluation
                 Evaluates verification output against design specs
                
-  tb_eval     - Testbench generation benchmark (VerifLLMBench)
-                Generates testbenches using LLMs and measures coverage
-                Uses cocotb + Verilator (open-source)
-                
-  folder_eval - Evaluate existing verification folder
-                Takes a folder with DUT + testbench files and runs evaluation
+  tb_eval     - Testbench evaluation (VerifLLMBench methodology)
+                Evaluates existing verification projects
+                Measures: build success, coverage, lint
+                Uses: cocotb + Verilator (open-source)
 
 Examples:
-  # Run testbench evaluation on all designs
-  python run_eval.py --eval tb_eval --all
+  # Run built-in examples
+  python run_eval.py --eval tb_eval --examples
   
-  # Run testbench evaluation on specific design with OpenAI
-  python run_eval.py --eval tb_eval --design accu --llm openai
+  # Evaluate single-file verification project
+  python run_eval.py --eval tb_eval --project tb_eval/examples/adder_single
   
-  # Run specification evaluation
+  # Evaluate multi-file verification project
+  python run_eval.py --eval tb_eval --project tb_eval/examples/fifo_multi
+  
+  # Evaluate multiple projects
+  python run_eval.py --eval tb_eval --projects proj1/ proj2/
+  
+  # Run with multiple iterations for consistency
+  python run_eval.py --eval tb_eval --project my_verif/ --runs 3
+  
+  # Run specification evaluation (original mode)
   python run_eval.py --eval spec_eval --design fifo_sync
-  
-  # Evaluate a verification folder
-  python run_eval.py --eval folder_eval --folder tb_eval/test_verif/fifo_sc
-  
-  # Quick test with fewer runs
-  python run_eval.py --eval tb_eval --design adder_8bit --runs 2
         """
     )
     
     # Common arguments
     parser.add_argument('--eval', type=str, required=True,
-                       choices=['spec_eval', 'tb_eval', 'folder_eval'],
+                       choices=['spec_eval', 'tb_eval'],
                        help='Evaluation mode to run')
-    parser.add_argument('--all', action='store_true',
-                       help='Run on all designs')
-    parser.add_argument('--design', type=str,
-                       help='Run on specific design')
-    parser.add_argument('--designs', type=str, nargs='+',
-                       help='Run on multiple specific designs (tb_eval only)')
-    parser.add_argument('--folder', type=str,
-                       help='Path to verification folder (folder_eval only)')
     
-    # tb_eval specific arguments
-    parser.add_argument('--llm', type=str, default='anthropic',
-                       choices=['anthropic', 'openai'],
-                       help='LLM provider for tb_eval (default: anthropic)')
+    # tb_eval arguments
+    parser.add_argument('--project', type=str,
+                       help='Path to verification project folder (tb_eval)')
+    parser.add_argument('--projects', type=str, nargs='+',
+                       help='Paths to multiple verification projects (tb_eval)')
+    parser.add_argument('--examples', action='store_true',
+                       help='Run built-in example projects (tb_eval)')
     parser.add_argument('--runs', type=int, default=1,
-                       help='Number of test runs (default: 1)')
-    parser.add_argument('--max-iterations', type=int, default=4,
-                       help='Max iterations for syntax fixing in tb_eval (default: 4)')
+                       help='Number of evaluation runs (default: 1)')
+    parser.add_argument('--verbose', action='store_true',
+                       help='Enable verbose output')
+    parser.add_argument('--keep-work', action='store_true',
+                       help='Keep work directory after evaluation')
     
-    # spec_eval specific arguments
+    # spec_eval arguments
+    parser.add_argument('--all', action='store_true',
+                       help='Run on all designs (spec_eval)')
+    parser.add_argument('--design', type=str,
+                       help='Run on specific design (spec_eval)')
     parser.add_argument('--regenerate', action='store_true',
-                       help='Regenerate verification for spec_eval')
-    
-    # List options
-    parser.add_argument('--list', action='store_true',
-                       help='List available designs for the selected eval mode')
+                       help='Regenerate verification (spec_eval)')
     
     args = parser.parse_args()
     
-    # Handle --list
-    if args.list:
-        if args.eval == 'tb_eval':
-            from tb_eval.config import get_all_design_names, get_design_config
-            print("Available designs for tb_eval:")
-            for name in get_all_design_names():
-                design = get_design_config(name)
-                print(f"  {name}: {design.description[:60]}...")
-        elif args.eval == 'folder_eval':
-            print("folder_eval accepts any folder with verification files.")
-            print("The folder should contain:")
-            print("  - DUT files (.v, .sv)")
-            print("  - Testbench files (test_*.py)")
-            print("  - Optional: Makefile, support files")
-        else:
-            print("Available designs for spec_eval:")
-            designs_dir = Path(__file__).parent / 'designs'
-            for d in designs_dir.iterdir():
-                if d.is_dir():
-                    print(f"  {d.name}")
-        return
-    
     # Run the selected evaluation
     if args.eval == 'tb_eval':
-        run_tb_eval(args)
-    elif args.eval == 'folder_eval':
-        success = run_folder_eval(args)
+        success = run_tb_eval(args)
         sys.exit(0 if success else 1)
     else:
         run_spec_eval(args)
@@ -221,4 +174,3 @@ Examples:
 
 if __name__ == '__main__':
     main()
-
