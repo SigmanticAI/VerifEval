@@ -1,0 +1,1269 @@
+{
+  "design_name": "synchronous_fifo",
+  "description": "A synchronous FIFO (First-In-First-Out) buffer with configurable data width and depth. Provides full, empty, almost_full, and almost_empty status flags along with an accurate count of entries. Supports simultaneous read/write operations with proper priority handling.",
+  "modules": [
+    {
+      "name": "sync_fifo",
+      "description": "Top-level synchronous FIFO module implementing circular buffer with read/write pointers, status flags, and entry counting",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1,
+          "description": "System clock - all operations synchronous to rising edge"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1,
+          "description": "Active-low asynchronous reset - clears FIFO and resets all pointers"
+        },
+        {
+          "name": "wr_en",
+          "direction": "input",
+          "width": 1,
+          "description": "Write enable - when high, writes wr_data to FIFO if not full"
+        },
+        {
+          "name": "rd_en",
+          "direction": "input",
+          "width": 1,
+          "description": "Read enable - when high, reads data from FIFO if not empty"
+        },
+        {
+          "name": "wr_data",
+          "direction": "input",
+          "width": "DATA_WIDTH",
+          "description": "Write data input - data to be written into FIFO"
+        },
+        {
+          "name": "rd_data",
+          "direction": "output",
+          "width": "DATA_WIDTH",
+          "description": "Read data output - data read from FIFO head"
+        },
+        {
+          "name": "full",
+          "direction": "output",
+          "width": 1,
+          "description": "FIFO full flag - asserted when count equals DEPTH"
+        },
+        {
+          "name": "empty",
+          "direction": "output",
+          "width": 1,
+          "description": "FIFO empty flag - asserted when count equals 0"
+        },
+        {
+          "name": "almost_full",
+          "direction": "output",
+          "width": 1,
+          "description": "Almost full flag - asserted when count equals DEPTH-1"
+        },
+        {
+          "name": "almost_empty",
+          "direction": "output",
+          "width": 1,
+          "description": "Almost empty flag - asserted when count equals 1"
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": "clog2(DEPTH+1)",
+          "description": "Current number of entries in FIFO (0 to DEPTH)"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "default": "8",
+          "description": "Width of data bus in bits - determines size of each FIFO entry"
+        },
+        {
+          "name": "DEPTH",
+          "default": "16",
+          "description": "FIFO depth - maximum number of entries that can be stored"
+        }
+      ],
+      "fsms": [
+        {
+          "name": "fifo_state_machine",
+          "states": [
+            "EMPTY",
+            "NORMAL",
+            "ALMOST_FULL",
+            "FULL"
+          ],
+          "transitions": [
+            [
+              "EMPTY",
+              "ALMOST_EMPTY",
+              "wr_en && !rd_en && count==0"
+            ],
+            [
+              "EMPTY",
+              "NORMAL",
+              "wr_en && !rd_en && DEPTH>2"
+            ],
+            [
+              "ALMOST_EMPTY",
+              "EMPTY",
+              "rd_en && !wr_en && count==1"
+            ],
+            [
+              "ALMOST_EMPTY",
+              "NORMAL",
+              "wr_en && !rd_en && count==1"
+            ],
+            [
+              "ALMOST_EMPTY",
+              "ALMOST_EMPTY",
+              "(wr_en && rd_en) || (!wr_en && !rd_en)"
+            ],
+            [
+              "NORMAL",
+              "ALMOST_EMPTY",
+              "rd_en && !wr_en && count==2"
+            ],
+            [
+              "NORMAL",
+              "ALMOST_FULL",
+              "wr_en && !rd_en && count==DEPTH-2"
+            ],
+            [
+              "NORMAL",
+              "NORMAL",
+              "(wr_en && rd_en) || (!wr_en && !rd_en) || (count between 2 and DEPTH-2)"
+            ],
+            [
+              "ALMOST_FULL",
+              "NORMAL",
+              "rd_en && !wr_en && count==DEPTH-1"
+            ],
+            [
+              "ALMOST_FULL",
+              "FULL",
+              "wr_en && !rd_en && count==DEPTH-1"
+            ],
+            [
+              "ALMOST_FULL",
+              "ALMOST_FULL",
+              "(wr_en && rd_en) || (!wr_en && !rd_en)"
+            ],
+            [
+              "FULL",
+              "ALMOST_FULL",
+              "rd_en && !wr_en && count==DEPTH"
+            ],
+            [
+              "FULL",
+              "NORMAL",
+              "rd_en && wr_en && count==DEPTH"
+            ],
+            [
+              "FULL",
+              "FULL",
+              "!rd_en || (wr_en && !rd_en)"
+            ],
+            [
+              "*",
+              "EMPTY",
+              "!rst_n"
+            ]
+          ],
+          "description": "Main FIFO state machine tracking fill level and controlling flag outputs based on current occupancy"
+        },
+        {
+          "name": "pointer_management",
+          "states": [
+            "IDLE",
+            "WRITE_ONLY",
+            "READ_ONLY",
+            "READ_WRITE"
+          ],
+          "transitions": [
+            [
+              "IDLE",
+              "WRITE_ONLY",
+              "wr_en && !rd_en && !full"
+            ],
+            [
+              "IDLE",
+              "READ_ONLY",
+              "rd_en && !wr_en && !empty"
+            ],
+            [
+              "IDLE",
+              "READ_WRITE",
+              "wr_en && rd_en && !empty && !full"
+            ],
+            [
+              "WRITE_ONLY",
+              "IDLE",
+              "operation complete"
+            ],
+            [
+              "READ_ONLY",
+              "IDLE",
+              "operation complete"
+            ],
+            [
+              "READ_WRITE",
+              "IDLE",
+              "operation complete"
+            ],
+            [
+              "*",
+              "IDLE",
+              "!rst_n"
+            ]
+          ],
+          "description": "Pointer management FSM controlling read and write pointer increments based on valid operations"
+        }
+      ],
+      "key_signals": [
+        {
+          "name": "wr_ptr",
+          "width": "clog2(DEPTH)",
+          "description": "Write pointer - points to next write location in memory array"
+        },
+        {
+          "name": "rd_ptr",
+          "width": "clog2(DEPTH)",
+          "description": "Read pointer - points to next read location in memory array"
+        },
+        {
+          "name": "mem",
+          "width": "DATA_WIDTH * DEPTH",
+          "description": "Internal memory array storing FIFO data"
+        },
+        {
+          "name": "count_reg",
+          "width": "clog2(DEPTH+1)",
+          "description": "Internal register tracking current number of entries"
+        },
+        {
+          "name": "wr_ptr_next",
+          "width": "clog2(DEPTH)",
+          "description": "Next write pointer value (with wraparound logic)"
+        },
+        {
+          "name": "rd_ptr_next",
+          "width": "clog2(DEPTH)",
+          "description": "Next read pointer value (with wraparound logic)"
+        },
+        {
+          "name": "count_next",
+          "width": "clog2(DEPTH+1)",
+          "description": "Next count value based on read/write operations"
+        },
+        {
+          "name": "wr_valid",
+          "width": 1,
+          "description": "Internal signal indicating valid write operation (wr_en && !full) || (wr_en && rd_en && full)"
+        },
+        {
+          "name": "rd_valid",
+          "width": 1,
+          "description": "Internal signal indicating valid read operation (rd_en && !empty) || (wr_en && rd_en && empty)"
+        },
+        {
+          "name": "full_next",
+          "width": 1,
+          "description": "Next cycle full flag value"
+        },
+        {
+          "name": "empty_next",
+          "width": 1,
+          "description": "Next cycle empty flag value"
+        },
+        {
+          "name": "almost_full_next",
+          "width": 1,
+          "description": "Next cycle almost_full flag value"
+        },
+        {
+          "name": "almost_empty_next",
+          "width": 1,
+          "description": "Next cycle almost_empty flag value"
+        },
+        {
+          "name": "wr_ptr_msb",
+          "width": 1,
+          "description": "MSB of write pointer for wraparound detection"
+        },
+        {
+          "name": "rd_ptr_msb",
+          "width": 1,
+          "description": "MSB of read pointer for wraparound detection"
+        },
+        {
+          "name": "ptr_equal",
+          "width": 1,
+          "description": "Flag indicating read and write pointers are equal"
+        },
+        {
+          "name": "ptr_diff",
+          "width": "clog2(DEPTH+1)",
+          "description": "Difference between write and read pointers for count calculation"
+        }
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "fifo_write_interface",
+      "type": "custom",
+      "signals": [
+        "clk",
+        "rst_n",
+        "wr_en",
+        "wr_data",
+        "full",
+        "almost_full"
+      ],
+      "description": "Write-side interface for pushing data into FIFO"
+    },
+    {
+      "name": "fifo_read_interface",
+      "type": "custom",
+      "signals": [
+        "clk",
+        "rst_n",
+        "rd_en",
+        "rd_data",
+        "empty",
+        "almost_empty"
+      ],
+      "description": "Read-side interface for popping data from FIFO"
+    },
+    {
+      "name": "fifo_status_interface",
+      "type": "custom",
+      "signals": [
+        "full",
+        "empty",
+        "almost_full",
+        "almost_empty",
+        "count"
+      ],
+      "description": "Status monitoring interface providing FIFO occupancy information"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "description": "FIFO Ordering: Data shall be read in the same order it was written (first-in-first-out). Verify by writing known sequence and reading back in order.",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-002",
+      "description": "Full Flag: The full flag shall be asserted when FIFO contains DEPTH entries and shall prevent further writes (unless simultaneous read).",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-003",
+      "description": "Empty Flag: The empty flag shall be asserted when FIFO contains 0 entries and shall prevent further reads (unless simultaneous write).",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-004",
+      "description": "Write When Full: Write operations shall be ignored when full is asserted unless there is a simultaneous read operation.",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-005",
+      "description": "Read When Empty: Read operations shall be ignored when empty is asserted unless there is a simultaneous write operation.",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-006",
+      "description": "Count Accuracy: The count signal shall accurately reflect the number of entries in the FIFO at all times (0 to DEPTH).",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-007",
+      "description": "Almost Full: The almost_full flag shall be asserted when count equals (DEPTH-1) and deasserted otherwise.",
+      "priority": "medium",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-008",
+      "description": "Almost Empty: The almost_empty flag shall be asserted when count equals 1 and deasserted otherwise.",
+      "priority": "medium",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-009",
+      "description": "Simultaneous Operations: When wr_en and rd_en are both asserted: (a) If FIFO is empty, perform write only; (b) If FIFO is full, perform read only; (c) Otherwise, perform both operations.",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-010",
+      "description": "Reset Behavior: Upon rst_n assertion, FIFO shall be cleared, empty=1, full=0, count=0, and all pointers reset to 0.",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-011",
+      "description": "Synchronous Outputs: All outputs shall be synchronous to the rising edge of clk with no combinational paths from inputs to outputs.",
+      "priority": "high",
+      "category": "timing"
+    },
+    {
+      "id": "REQ-012",
+      "description": "Data Integrity: Data shall not be corrupted during storage or retrieval. Each write must be readable exactly once with correct value.",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-013",
+      "description": "Pointer Wraparound: Read and write pointers shall correctly wrap around from (DEPTH-1) to 0 without data loss or corruption.",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-014",
+      "description": "Flag Mutual Exclusion: Full and empty flags shall never be asserted simultaneously except during reset.",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-015",
+      "description": "Count Bounds: Count shall never exceed DEPTH or go below 0. Count transitions shall be +1, -1, or 0 per cycle.",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-016",
+      "description": "Back-to-Back Operations: FIFO shall support back-to-back write and read operations without requiring idle cycles.",
+      "priority": "medium",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-017",
+      "description": "Flag Timing: Status flags (full, empty, almost_full, almost_empty) shall update on the same clock cycle as the count changes.",
+      "priority": "medium",
+      "category": "timing"
+    },
+    {
+      "id": "REQ-018",
+      "description": "Read Data Stability: rd_data shall remain stable when empty is asserted and no write occurs, or shall update to next valid entry on read.",
+      "priority": "medium",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-019",
+      "description": "Parameterization: FIFO shall function correctly for any DATA_WIDTH >= 1 and DEPTH >= 2.",
+      "priority": "medium",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-020",
+      "description": "Power-On State: After power-on and reset release, FIFO shall be in empty state with count=0.",
+      "priority": "low",
+      "category": "functional"
+    }
+  ],
+  "corner_cases": [
+    {
+      "id": "CC-001",
+      "description": "Write to Full FIFO: Verify writes are ignored when full flag is asserted, no data corruption occurs, and count remains at DEPTH.",
+      "how_to_test": "Fill FIFO to capacity, attempt additional writes while monitoring full flag, verify count stays at DEPTH and no pointers advance. Read back all data to verify integrity."
+    },
+    {
+      "id": "CC-002",
+      "description": "Read from Empty FIFO: Verify reads are ignored when empty flag is asserted, rd_data remains stable or shows last valid data, and count remains at 0.",
+      "how_to_test": "Empty FIFO completely, attempt additional reads while monitoring empty flag, verify count stays at 0, rd_data doesn't change, and no pointers advance."
+    },
+    {
+      "id": "CC-003",
+      "description": "Simultaneous R/W When Full: Verify that simultaneous read/write when full performs only read operation, count decrements to DEPTH-1, and full flag deasserts.",
+      "how_to_test": "Fill FIFO to capacity, assert both wr_en and rd_en simultaneously, verify only read occurs (count=DEPTH-1), write data is ignored, and full flag clears."
+    },
+    {
+      "id": "CC-004",
+      "description": "Simultaneous R/W When Empty: Verify that simultaneous read/write when empty performs only write operation, count increments to 1, and empty flag deasserts.",
+      "how_to_test": "Empty FIFO completely, assert both wr_en and rd_en simultaneously, verify only write occurs (count=1), no read data is consumed, and empty flag clears."
+    },
+    {
+      "id": "CC-005",
+      "description": "Pointer Wraparound: Verify correct behavior when read/write pointers wrap around from (DEPTH-1) to 0, including data integrity and flag accuracy.",
+      "how_to_test": "Write DEPTH entries, read DEPTH entries (forcing wraparound), write DEPTH more entries, read all back. Verify data integrity across wraparound boundary and flag correctness."
+    },
+    {
+      "id": "CC-006",
+      "description": "Rapid Fill/Empty Cycles: Verify stability during rapid transitions between full and empty states without intermediate stable states.",
+      "how_to_test": "Alternate between filling FIFO completely and emptying it completely in rapid succession. Monitor for flag glitches, count errors, or data corruption."
+    },
+    {
+      "id": "CC-007",
+      "description": "Single Entry Operation: Verify correct behavior when FIFO has exactly 1 entry (almost_empty asserted, count=1).",
+      "how_to_test": "Write one entry, verify almost_empty=1, empty=0, count=1. Read entry, verify transitions to empty. Test simultaneous R/W with count=1."
+    },
+    {
+      "id": "CC-008",
+      "description": "Reset During Operations: Verify clean recovery when reset asserted during active read/write operations at various fill levels.",
+      "how_to_test": "Partially fill FIFO, assert reset during write operation. Verify all pointers reset, flags correct (empty=1, full=0), count=0. Repeat during read and simultaneous R/W."
+    },
+    {
+      "id": "CC-009",
+      "description": "Back-to-Back Operations: Verify correct behavior with consecutive write or read operations with no idle cycles between them.",
+      "how_to_test": "Perform DEPTH consecutive writes without gaps, verify all data stored correctly. Perform DEPTH consecutive reads, verify all data retrieved in order. Test mixed back-to-back R/W."
+    },
+    {
+      "id": "CC-010",
+      "description": "Data Patterns: Verify integrity with various data patterns including all 0s, all 1s, random data, walking 1s, walking 0s, and alternating patterns.",
+      "how_to_test": "Write each pattern type to FIFO, read back and compare. Test patterns at various fill levels. Verify no bit corruption or pattern-dependent failures."
+    },
+    {
+      "id": "CC-011",
+      "description": "Almost Full Boundary: Verify almost_full flag behavior at count=DEPTH-2 to DEPTH-1 transition and back.",
+      "how_to_test": "Fill FIFO to DEPTH-2 entries, verify almost_full=0. Write one more (count=DEPTH-1), verify almost_full=1. Write/read to test transitions around this boundary."
+    },
+    {
+      "id": "CC-012",
+      "description": "Almost Empty Boundary: Verify almost_empty flag behavior at count=1 to 2 transition and back.",
+      "how_to_test": "Write 2 entries, verify almost_empty=0. Read one (count=1), verify almost_empty=1. Write/read to test transitions around this boundary."
+    },
+    {
+      "id": "CC-013",
+      "description": "Minimum Depth FIFO: Verify correct operation with DEPTH=2 (minimum practical depth) where almost_full and full are adjacent states.",
+      "how_to_test": "Instantiate FIFO with DEPTH=2, verify all operations, flags, and corner cases work correctly with minimal depth."
+    },
+    {
+      "id": "CC-014",
+      "description": "Maximum Data Width: Verify correct operation with large DATA_WIDTH values (e.g., 128, 256 bits) to test memory array implementation.",
+      "how_to_test": "Instantiate FIFO with DATA_WIDTH=128 or 256, perform full test suite, verify no width-related issues in storage or retrieval."
+    },
+    {
+      "id": "CC-015",
+      "description": "Pointer Collision: Verify correct behavior when read and write pointers are equal in both empty and full conditions.",
+      "how_to_test": "Monitor internal pointers. When empty (pointers equal), verify empty=1. Fill to full (pointers equal again), verify full=1. Ensure correct differentiation."
+    },
+    {
+      "id": "CC-016",
+      "description": "Count Increment/Decrement: Verify count correctly increments on write-only, decrements on read-only, and stays same on simultaneous R/W.",
+      "how_to_test": "Test each scenario at various fill levels. Verify count changes by exactly +1, -1, or 0. Check for off-by-one errors."
+    },
+    {
+      "id": "CC-017",
+      "description": "Flag Coherency: Verify all flags (full, empty, almost_full, almost_empty) are mutually consistent with count value at all times.",
+      "how_to_test": "Create checker that validates flag states against count: empty iff count=0, full iff count=DEPTH, almost_empty iff count=1, almost_full iff count=DEPTH-1."
+    },
+    {
+      "id": "CC-018",
+      "description": "Asynchronous Reset Timing: Verify reset can be asserted/deasserted at any point in clock cycle and FIFO recovers correctly.",
+      "how_to_test": "Apply reset at various phases relative to clock edge during active operations. Verify clean reset and proper operation after reset release."
+    },
+    {
+      "id": "CC-019",
+      "description": "Sustained Full Condition: Verify FIFO remains stable when held in full state for extended period with continuous write attempts.",
+      "how_to_test": "Fill FIFO, hold wr_en=1 with rd_en=0 for many cycles. Verify full flag stays asserted, count stays at DEPTH, no overflow or corruption."
+    },
+    {
+      "id": "CC-020",
+      "description": "Sustained Empty Condition: Verify FIFO remains stable when held in empty state for extended period with continuous read attempts.",
+      "how_to_test": "Empty FIFO, hold rd_en=1 with wr_en=0 for many cycles. Verify empty flag stays asserted, count stays at 0, no underflow or rd_data corruption."
+    },
+    {
+      "id": "CC-021",
+      "description": "Alternating Single R/W: Verify correct operation with alternating single write and single read operations maintaining steady-state count.",
+      "how_to_test": "Write one entry, read one entry, repeat for many cycles. Verify count oscillates between 0 and 1, flags toggle correctly, data integrity maintained."
+    },
+    {
+      "id": "CC-022",
+      "description": "Non-Power-of-2 Depth: Verify correct operation with DEPTH values that are not powers of 2 (e.g., 10, 17, 31).",
+      "how_to_test": "Instantiate FIFO with non-power-of-2 DEPTH, verify pointer wraparound works correctly, count reaches exact DEPTH value, no off-by-one errors."
+    },
+    {
+      "id": "CC-023",
+      "description": "Simultaneous R/W in Normal State: Verify simultaneous read/write in normal state (not empty or full) performs both operations correctly.",
+      "how_to_test": "Partially fill FIFO (count between 1 and DEPTH-1), assert both wr_en and rd_en. Verify count unchanged, write data stored, read data retrieved, pointers both advance."
+    },
+    {
+      "id": "CC-024",
+      "description": "Flag Transition Timing: Verify flags transition on correct clock edge relative to count changes, with no combinational glitches.",
+      "how_to_test": "Monitor flag transitions with fine timing resolution. Verify all flags update synchronously with clock edge, no intermediate glitches during transitions."
+    },
+    {
+      "id": "CC-025",
+      "description": "Stress Test - Random Operations: Verify correct operation under random sequence of reads, writes, and simultaneous operations at random intervals.",
+      "how_to_test": "Generate constrained random stimulus (respecting full/empty conditions). Run for thousands of cycles. Verify data integrity, flag correctness, count accuracy throughout."
+    }
+  ],
+  "verification_components": [
+    {
+      "name": "fifo_driver",
+      "type": "driver",
+      "description": "Drives write and read transactions to FIFO interface",
+      "responsibilities": [
+        "Generate write transactions with configurable data patterns",
+        "Generate read transactions with configurable timing",
+        "Support back-to-back operations",
+        "Support simultaneous read/write operations",
+        "Handle reset sequences"
+      ]
+    },
+    {
+      "name": "fifo_monitor",
+      "type": "monitor",
+      "description": "Monitors FIFO interface and collects transactions",
+      "responsibilities": [
+        "Capture all write transactions",
+        "Capture all read transactions",
+        "Monitor flag transitions",
+        "Track count changes",
+        "Detect protocol violations"
+      ]
+    },
+    {
+      "name": "fifo_scoreboard",
+      "type": "scoreboard",
+      "description": "Checks correctness of FIFO behavior",
+      "responsibilities": [
+        "Maintain reference model of FIFO contents",
+        "Compare read data against expected values",
+        "Verify FIFO ordering (FIFO property)",
+        "Check flag correctness against count",
+        "Verify count accuracy",
+        "Detect data corruption"
+      ]
+    },
+    {
+      "name": "fifo_coverage_collector",
+      "type": "coverage",
+      "description": "Collects functional coverage metrics",
+      "responsibilities": [
+        "Cover all count values (0 to DEPTH)",
+        "Cover all flag combinations",
+        "Cover all operation types (write-only, read-only, simultaneous)",
+        "Cover state transitions",
+        "Cover corner cases",
+        "Cover data patterns"
+      ]
+    },
+    {
+      "name": "fifo_sequence_library",
+      "type": "sequences",
+      "description": "Library of test sequences",
+      "sequences": [
+        {
+          "name": "basic_write_read_seq",
+          "description": "Write N entries then read N entries"
+        },
+        {
+          "name": "fill_empty_seq",
+          "description": "Fill FIFO completely then empty completely"
+        },
+        {
+          "name": "simultaneous_rw_seq",
+          "description": "Perform simultaneous read/write operations"
+        },
+        {
+          "name": "random_operations_seq",
+          "description": "Random mix of read/write operations"
+        },
+        {
+          "name": "back_to_back_write_seq",
+          "description": "Consecutive writes without gaps"
+        },
+        {
+          "name": "back_to_back_read_seq",
+          "description": "Consecutive reads without gaps"
+        },
+        {
+          "name": "reset_during_operation_seq",
+          "description": "Assert reset during active operations"
+        },
+        {
+          "name": "corner_case_seq",
+          "description": "Target specific corner cases"
+        },
+        {
+          "name": "stress_test_seq",
+          "description": "High-intensity random operations"
+        },
+        {
+          "name": "data_pattern_seq",
+          "description": "Test with specific data patterns"
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "name": "assert_full_flag_correct",
+      "type": "property",
+      "description": "Full flag is asserted if and only if count equals DEPTH",
+      "assertion": "full == (count == DEPTH)"
+    },
+    {
+      "name": "assert_empty_flag_correct",
+      "type": "property",
+      "description": "Empty flag is asserted if and only if count equals 0",
+      "assertion": "empty == (count == 0)"
+    },
+    {
+      "name": "assert_almost_full_correct",
+      "type": "property",
+      "description": "Almost full flag is asserted if and only if count equals DEPTH-1",
+      "assertion": "almost_full == (count == DEPTH-1)"
+    },
+    {
+      "name": "assert_almost_empty_correct",
+      "type": "property",
+      "description": "Almost empty flag is asserted if and only if count equals 1",
+      "assertion": "almost_empty == (count == 1)"
+    },
+    {
+      "name": "assert_count_bounds",
+      "type": "property",
+      "description": "Count shall never exceed DEPTH or go below 0",
+      "assertion": "(count >= 0) && (count <= DEPTH)"
+    },
+    {
+      "name": "assert_no_write_when_full",
+      "type": "property",
+      "description": "Write pointer shall not advance when full unless simultaneous read",
+      "assertion": "(full && wr_en && !rd_en) |=> (wr_ptr == $past(wr_ptr))"
+    },
+    {
+      "name": "assert_no_read_when_empty",
+      "type": "property",
+      "description": "Read pointer shall not advance when empty unless simultaneous write",
+      "assertion": "(empty && rd_en && !wr_en) |=> (rd_ptr == $past(rd_ptr))"
+    },
+    {
+      "name": "assert_mutual_exclusion",
+      "type": "property",
+      "description": "Full and empty flags shall never be asserted simultaneously",
+      "assertion": "!(full && empty)"
+    },
+    {
+      "name": "assert_count_increment",
+      "type": "property",
+      "description": "Count increments by 1 on write-only when not full",
+      "assertion": "(wr_en && !rd_en && !full) |=> (count == $past(count) + 1)"
+    },
+    {
+      "name": "assert_count_decrement",
+      "type": "property",
+      "description": "Count decrements by 1 on read-only when not empty",
+      "assertion": "(rd_en && !wr_en && !empty) |=> (count == $past(count) - 1)"
+    },
+    {
+      "name": "assert_count_stable_simul_rw",
+      "type": "property",
+      "description": "Count remains stable on simultaneous R/W in normal state",
+      "assertion": "(wr_en && rd_en && !empty && !full) |=> (count == $past(count))"
+    },
+    {
+      "name": "assert_reset_clears_fifo",
+      "type": "property",
+      "description": "Reset clears FIFO to empty state",
+      "assertion": "!rst_n |=> (empty && !full && count == 0)"
+    },
+    {
+      "name": "assert_pointer_wraparound",
+      "type": "property",
+      "description": "Pointers wrap from DEPTH-1 to 0",
+      "assertion": "(wr_ptr == DEPTH-1 && wr_valid) |=> (wr_ptr == 0)"
+    },
+    {
+      "name": "assert_data_integrity",
+      "type": "property",
+      "description": "Data written is data read (requires reference model)",
+      "assertion": "Data read matches expected value from reference FIFO model"
+    },
+    {
+      "name": "assert_fifo_ordering",
+      "type": "property",
+      "description": "First data written is first data read",
+      "assertion": "Read order matches write order (requires sequence tracking)"
+    },
+    {
+      "name": "assert_count_transition",
+      "type": "property",
+      "description": "Count changes by at most 1 per cycle",
+      "assertion": "(count - $past(count)) inside {-1, 0, 1}"
+    },
+    {
+      "name": "assert_wr_ptr_bounds",
+      "type": "property",
+      "description": "Write pointer stays within valid range",
+      "assertion": "wr_ptr < DEPTH"
+    },
+    {
+      "name": "assert_rd_ptr_bounds",
+      "type": "property",
+      "description": "Read pointer stays within valid range",
+      "assertion": "rd_ptr < DEPTH"
+    },
+    {
+      "name": "assert_simultaneous_rw_empty",
+      "type": "property",
+      "description": "Simultaneous R/W when empty performs write only",
+      "assertion": "(empty && wr_en && rd_en) |=> (count == 1 && !empty)"
+    },
+    {
+      "name": "assert_simultaneous_rw_full",
+      "type": "property",
+      "description": "Simultaneous R/W when full performs read only",
+      "assertion": "(full && wr_en && rd_en) |=> (count == DEPTH-1 && !full)"
+    }
+  ],
+  "coverage_model": [
+    {
+      "name": "count_coverage",
+      "type": "covergroup",
+      "description": "Cover all possible count values",
+      "coverpoints": [
+        {
+          "name": "cp_count",
+          "bins": "All values from 0 to DEPTH",
+          "description": "Ensure every count value is reached"
+        }
+      ]
+    },
+    {
+      "name": "flag_coverage",
+      "type": "covergroup",
+      "description": "Cover all flag combinations",
+      "coverpoints": [
+        {
+          "name": "cp_full",
+          "bins": [
+            "0",
+            "1"
+          ],
+          "description": "Full flag values"
+        },
+        {
+          "name": "cp_empty",
+          "bins": [
+            "0",
+            "1"
+          ],
+          "description": "Empty flag values"
+        },
+        {
+          "name": "cp_almost_full",
+          "bins": [
+            "0",
+            "1"
+          ],
+          "description": "Almost full flag values"
+        },
+        {
+          "name": "cp_almost_empty",
+          "bins": [
+            "0",
+            "1"
+          ],
+          "description": "Almost empty flag values"
+        }
+      ],
+      "crosses": [
+        {
+          "name": "flag_combinations",
+          "cross": [
+            "cp_full",
+            "cp_empty",
+            "cp_almost_full",
+            "cp_almost_empty"
+          ],
+          "illegal_bins": [
+            "full && empty"
+          ],
+          "description": "All valid flag combinations"
+        }
+      ]
+    },
+    {
+      "name": "operation_coverage",
+      "type": "covergroup",
+      "description": "Cover all operation types",
+      "coverpoints": [
+        {
+          "name": "cp_operation",
+          "bins": [
+            "write_only",
+            "read_only",
+            "simultaneous_rw",
+            "no_operation"
+          ],
+          "description": "All operation types"
+        },
+        {
+          "name": "cp_state",
+          "bins": [
+            "empty",
+            "almost_empty",
+            "normal",
+            "almost_full",
+            "full"
+          ],
+          "description": "FIFO fill states"
+        }
+      ],
+      "crosses": [
+        {
+          "name": "operation_in_state",
+          "cross": [
+            "cp_operation",
+            "cp_state"
+          ],
+          "description": "All operations in all states"
+        }
+      ]
+    },
+    {
+      "name": "transition_coverage",
+      "type": "covergroup",
+      "description": "Cover state transitions",
+      "coverpoints": [
+        {
+          "name": "cp_state_transition",
+          "bins": [
+            "empty_to_almost_empty",
+            "almost_empty_to_empty",
+            "almost_empty_to_normal",
+            "normal_to_almost_empty",
+            "normal_to_almost_full",
+            "almost_full_to_normal",
+            "almost_full_to_full",
+            "full_to_almost_full"
+          ],
+          "description": "All valid state transitions"
+        }
+      ]
+    },
+    {
+      "name": "corner_case_coverage",
+      "type": "covergroup",
+      "description": "Cover corner cases",
+      "coverpoints": [
+        {
+          "name": "cp_corner_cases",
+          "bins": [
+            "write_when_full",
+            "read_when_empty",
+            "simul_rw_when_full",
+            "simul_rw_when_empty",
+            "pointer_wraparound_wr",
+            "pointer_wraparound_rd",
+            "reset_during_write",
+            "reset_during_read",
+            "back_to_back_writes",
+            "back_to_back_reads"
+          ],
+          "description": "All corner cases exercised"
+        }
+      ]
+    },
+    {
+      "name": "data_pattern_coverage",
+      "type": "covergroup",
+      "description": "Cover data patterns",
+      "coverpoints": [
+        {
+          "name": "cp_data_pattern",
+          "bins": [
+            "all_zeros",
+            "all_ones",
+            "alternating_01",
+            "alternating_10",
+            "walking_ones",
+            "walking_zeros",
+            "random"
+          ],
+          "description": "Various data patterns tested"
+        }
+      ]
+    },
+    {
+      "name": "boundary_coverage",
+      "type": "covergroup",
+      "description": "Cover boundary conditions",
+      "coverpoints": [
+        {
+          "name": "cp_boundaries",
+          "bins": [
+            "count_0_to_1",
+            "count_1_to_0",
+            "count_1_to_2",
+            "count_2_to_1",
+            "count_depth_minus_2_to_depth_minus_1",
+            "count_depth_minus_1_to_depth_minus_2",
+            "count_depth_minus_1_to_depth",
+            "count_depth_to_depth_minus_1"
+          ],
+          "description": "Boundary transitions for flags"
+        }
+      ]
+    }
+  ],
+  "testplan": [
+    {
+      "test_name": "test_basic_write_read",
+      "description": "Basic sanity test - write several entries, then read them back",
+      "requirements": [
+        "REQ-001",
+        "REQ-012"
+      ],
+      "corner_cases": [],
+      "priority": "high"
+    },
+    {
+      "test_name": "test_full_flag",
+      "description": "Fill FIFO to capacity and verify full flag behavior",
+      "requirements": [
+        "REQ-002",
+        "REQ-004"
+      ],
+      "corner_cases": [
+        "CC-001",
+        "CC-019"
+      ],
+      "priority": "high"
+    },
+    {
+      "test_name": "test_empty_flag",
+      "description": "Empty FIFO completely and verify empty flag behavior",
+      "requirements": [
+        "REQ-003",
+        "REQ-005"
+      ],
+      "corner_cases": [
+        "CC-002",
+        "CC-020"
+      ],
+      "priority": "high"
+    },
+    {
+      "test_name": "test_almost_full",
+      "description": "Test almost_full flag at DEPTH-1 boundary",
+      "requirements": [
+        "REQ-007"
+      ],
+      "corner_cases": [
+        "CC-011"
+      ],
+      "priority": "medium"
+    },
+    {
+      "test_name": "test_almost_empty",
+      "description": "Test almost_empty flag at count=1 boundary",
+      "requirements": [
+        "REQ-008"
+      ],
+      "corner_cases": [
+        "CC-007",
+        "CC-012"
+      ],
+      "priority": "medium"
+    },
+    {
+      "test_name": "test_count_accuracy",
+      "description": "Verify count signal accuracy through various operations",
+      "requirements": [
+        "REQ-006",
+        "REQ-015"
+      ],
+      "corner_cases": [
+        "CC-016"
+      ],
+      "priority": "high"
+    },
+    {
+      "test_name": "test_simultaneous_rw_full",
+      "description": "Test simultaneous read/write when FIFO is full",
+      "requirements": [
+        "REQ-009"
+      ],
+      "corner_cases": [
+        "CC-003"
+      ],
+      "priority": "high"
+    },
+    {
+      "test_name": "test_simultaneous_rw_empty",
+      "description": "Test simultaneous read/write when FIFO is empty",
+      "requirements": [
+        "REQ-009"
+      ],
+      "corner_cases": [
+        "CC-004"
+      ],
+      "priority": "high"
+    },
+    {
+      "test_name": "test_simultaneous_rw_normal",
+      "description": "Test simultaneous read/write in normal state",
+      "requirements": [
+        "REQ-009"
+      ],
+      "corner_cases": [
+        "CC-023"
+      ],
+      "priority": "high"
+    },
+    {
+      "test_name": "test_pointer_wraparound",
+      "description": "Test pointer wraparound from DEPTH-1 to 0",
+      "requirements": [
+        "REQ-013"
+      ],
+      "corner_cases": [
+        "CC-005",
+        "CC-015"
+      ],
+      "priority": "high"
+    },
+    {
+      "test_name": "test_reset",
+      "description": "Test reset behavior and recovery",
+      "requirements": [
+        "REQ-010"
+      ],
+      "corner_cases": [
+        "CC-008",
+        "CC-018"
+      ],
+      "priority": "high"
+    },
+    {
+      "test_name": "test_back_to_back_writes",
+      "description": "Test consecutive writes without gaps",
+      "requirements": [
+        "REQ-016"
+      ],
+      "corner_cases": [
+        "CC-009"
+      ],
+      "priority": "medium"
+    },
+    {
+      "test_name": "test_back_to_back_reads",
+      "description": "Test consecutive reads without gaps",
+      "requirements": [
+        "REQ-016"
+      ],
+      "corner_cases": [
+        "CC-009"
+      ],
+      "priority": "medium"
+    },
+    {
+      "test_name": "test_data_patterns",
+      "description": "Test various data patterns for integrity",
+      "requirements": [
+        "REQ-012"
+      ],
+      "corner_cases": [
+        "CC-010"
+      ],
+      "priority": "medium"
+    },
+    {
+      "test_name": "test_rapid_fill_empty",
+      "description": "Test rapid transitions between full and empty",
+      "requirements": [
+        "REQ-001",
+        "REQ-012"
+      ],
+      "corner_cases": [
+        "CC-006"
+      ],
+      "priority": "medium"
+    },
+    {
+      "test_name": "test_alternating_rw",
+      "description": "Test alternating single read/write operations",
+      "requirements": [
+        "REQ-001",
+        "REQ-012"
+      ],
+      "corner_cases": [
+        "CC-021"
+      ],
+      "priority": "low"
+    },
+    {
+      "test_name": "test_flag_coherency",
+      "description": "Verify all flags are consistent with count",
+      "requirements": [
+        "REQ-014",
+        "REQ-017"
+      ],
+      "corner_cases": [
+        "CC-017",
+        "CC-024"
+      ],
+      "priority": "high"
+    },
+    {
+      "test_name": "test_minimum_depth",
+      "description": "Test with DEPTH=2 (minimum depth)",
+      "requirements": [
+        "REQ-019"
+      ],
+      "corner_cases": [
+        "CC-013"
+      ],
+      "priority": "low"
+    },
+    {
+      "test_name": "test_non_power_of_2_depth",
+      "description": "Test with non-power-of-2 DEPTH values",
+      "requirements": [
+        "REQ-019"
+      ],
+      "corner_cases": [
+        "CC-022"
+      ],
+      "priority": "low"
+    },
+    {
+      "test_name": "test_large_data_width",
+      "description": "Test with large DATA_WIDTH (128, 256 bits)",
+      "requirements": [
+        "REQ-019"
+      ],
+      "corner_cases": [
+        "CC-014"
+      ],
+      "priority": "low"
+    },
+    {
+      "test_name": "test_random_operations",
+      "description": "Constrained random test with mixed operations",
+      "requirements": [
+        "All"
+      ],
+      "corner_cases": [
+        "CC-025"
+      ],
+      "priority": "high"
+    },
+    {
+      "test_name": "test_stress",
+      "description": "High-intensity stress test with random operations",
+      "requirements": [
+        "All"
+      ],
+      "corner_cases": [
+        "CC-025"
+      ],
+      "priority": "medium"
+    }
+  ]
+}

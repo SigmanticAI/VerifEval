@@ -1,37 +1,29 @@
-// Synchronous FIFO DUT
-// Multi-file verification example
+// Simple Synchronous FIFO
+// Single-file verification example
 
 module fifo #(
     parameter DATA_WIDTH = 8,
-    parameter DEPTH = 16
+    parameter DEPTH = 8
 )(
     input  wire                  clk,
     input  wire                  rst_n,
-    
-    // Write interface
     input  wire                  wr_en,
     input  wire [DATA_WIDTH-1:0] wr_data,
-    
-    // Read interface
     input  wire                  rd_en,
     output reg  [DATA_WIDTH-1:0] rd_data,
-    
-    // Status flags
     output wire                  full,
-    output wire                  empty,
-    output wire [$clog2(DEPTH):0] count
+    output wire                  empty
 );
 
-    // Memory and pointers
-    reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];
-    reg [$clog2(DEPTH)-1:0] wr_ptr;
-    reg [$clog2(DEPTH)-1:0] rd_ptr;
-    reg [$clog2(DEPTH):0] fifo_count;
+    localparam ADDR_WIDTH = $clog2(DEPTH);
     
-    // Status flags
-    assign full = (fifo_count == DEPTH);
-    assign empty = (fifo_count == 0);
-    assign count = fifo_count;
+    reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];
+    reg [ADDR_WIDTH-1:0] wr_ptr;
+    reg [ADDR_WIDTH-1:0] rd_ptr;
+    reg [ADDR_WIDTH:0]   count;
+    
+    assign full  = (count == DEPTH);
+    assign empty = (count == 0);
     
     // Write logic
     always @(posedge clk or negedge rst_n) begin
@@ -57,12 +49,12 @@ module fifo #(
     // Count logic
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            fifo_count <= 0;
+            count <= 0;
         end else begin
             case ({wr_en && !full, rd_en && !empty})
-                2'b10: fifo_count <= fifo_count + 1;
-                2'b01: fifo_count <= fifo_count - 1;
-                default: fifo_count <= fifo_count;
+                2'b10: count <= count + 1;
+                2'b01: count <= count - 1;
+                default: count <= count;
             endcase
         end
     end

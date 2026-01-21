@@ -1,0 +1,2498 @@
+{
+  "nodes": [
+    {
+      "id": "intent_REQ-001",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "FIFO Ordering: Data shall be read in the same orde",
+        "description": "FIFO Ordering: Data shall be read in the same order it was written (first-in-first-out). Verify by writing known sequence and reading back in order.",
+        "priority": 1.0,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-002",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Full Flag: The full flag shall be asserted when FI",
+        "description": "Full Flag: The full flag shall be asserted when FIFO contains DEPTH entries and shall prevent further writes (unless simultaneous read).",
+        "priority": 1.0,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-003",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Empty Flag: The empty flag shall be asserted when ",
+        "description": "Empty Flag: The empty flag shall be asserted when FIFO contains 0 entries and shall prevent further reads (unless simultaneous write).",
+        "priority": 1.0,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-004",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Write When Full: Write operations shall be ignored",
+        "description": "Write When Full: Write operations shall be ignored when full is asserted unless there is a simultaneous read operation.",
+        "priority": 1.0,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-005",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Read When Empty: Read operations shall be ignored ",
+        "description": "Read When Empty: Read operations shall be ignored when empty is asserted unless there is a simultaneous write operation.",
+        "priority": 1.0,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-006",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Count Accuracy: The count signal shall accurately ",
+        "description": "Count Accuracy: The count signal shall accurately reflect the number of entries in the FIFO at all times (0 to DEPTH).",
+        "priority": 1.0,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-007",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Almost Full: The almost_full flag shall be asserte",
+        "description": "Almost Full: The almost_full flag shall be asserted when count equals (DEPTH-1) and deasserted otherwise.",
+        "priority": 0.6,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-008",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Almost Empty: The almost_empty flag shall be asser",
+        "description": "Almost Empty: The almost_empty flag shall be asserted when count equals 1 and deasserted otherwise.",
+        "priority": 0.6,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-009",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Simultaneous Operations: When wr_en and rd_en are ",
+        "description": "Simultaneous Operations: When wr_en and rd_en are both asserted: (a) If FIFO is empty, perform write only; (b) If FIFO is full, perform read only; (c) Otherwise, perform both operations.",
+        "priority": 1.0,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-010",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Reset Behavior: Upon rst_n assertion, FIFO shall b",
+        "description": "Reset Behavior: Upon rst_n assertion, FIFO shall be cleared, empty=1, full=0, count=0, and all pointers reset to 0.",
+        "priority": 1.0,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-011",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Synchronous Outputs: All outputs shall be synchron",
+        "description": "Synchronous Outputs: All outputs shall be synchronous to the rising edge of clk with no combinational paths from inputs to outputs.",
+        "priority": 1.0,
+        "category": "timing",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-012",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Data Integrity: Data shall not be corrupted during",
+        "description": "Data Integrity: Data shall not be corrupted during storage or retrieval. Each write must be readable exactly once with correct value.",
+        "priority": 1.0,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-013",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Pointer Wraparound: Read and write pointers shall ",
+        "description": "Pointer Wraparound: Read and write pointers shall correctly wrap around from (DEPTH-1) to 0 without data loss or corruption.",
+        "priority": 1.0,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-014",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Flag Mutual Exclusion: Full and empty flags shall ",
+        "description": "Flag Mutual Exclusion: Full and empty flags shall never be asserted simultaneously except during reset.",
+        "priority": 1.0,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-015",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Count Bounds: Count shall never exceed DEPTH or go",
+        "description": "Count Bounds: Count shall never exceed DEPTH or go below 0. Count transitions shall be +1, -1, or 0 per cycle.",
+        "priority": 1.0,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-016",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Back-to-Back Operations: FIFO shall support back-t",
+        "description": "Back-to-Back Operations: FIFO shall support back-to-back write and read operations without requiring idle cycles.",
+        "priority": 0.6,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-017",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Flag Timing: Status flags (full, empty, almost_ful",
+        "description": "Flag Timing: Status flags (full, empty, almost_full, almost_empty) shall update on the same clock cycle as the count changes.",
+        "priority": 0.6,
+        "category": "timing",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-018",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Read Data Stability: rd_data shall remain stable w",
+        "description": "Read Data Stability: rd_data shall remain stable when empty is asserted and no write occurs, or shall update to next valid entry on read.",
+        "priority": 0.6,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-019",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Parameterization: FIFO shall function correctly fo",
+        "description": "Parameterization: FIFO shall function correctly for any DATA_WIDTH >= 1 and DEPTH >= 2.",
+        "priority": 0.6,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_REQ-020",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Power-On State: After power-on and reset release, ",
+        "description": "Power-On State: After power-on and reset release, FIFO shall be in empty state with count=0.",
+        "priority": 0.3,
+        "category": "functional",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-001",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Write to Full FIFO: Verify writes are ignored when",
+        "description": "Write to Full FIFO: Verify writes are ignored when full flag is asserted, no data corruption occurs, and count remains at DEPTH.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Fill FIFO to capacity, attempt additional writes while monitoring full flag, verify count stays at DEPTH and no pointers advance. Read back all data to verify integrity.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-002",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Read from Empty FIFO: Verify reads are ignored whe",
+        "description": "Read from Empty FIFO: Verify reads are ignored when empty flag is asserted, rd_data remains stable or shows last valid data, and count remains at 0.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Empty FIFO completely, attempt additional reads while monitoring empty flag, verify count stays at 0, rd_data doesn't change, and no pointers advance.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-003",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Simultaneous R/W When Full: Verify that simultaneo",
+        "description": "Simultaneous R/W When Full: Verify that simultaneous read/write when full performs only read operation, count decrements to DEPTH-1, and full flag deasserts.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Fill FIFO to capacity, assert both wr_en and rd_en simultaneously, verify only read occurs (count=DEPTH-1), write data is ignored, and full flag clears.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-004",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Simultaneous R/W When Empty: Verify that simultane",
+        "description": "Simultaneous R/W When Empty: Verify that simultaneous read/write when empty performs only write operation, count increments to 1, and empty flag deasserts.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Empty FIFO completely, assert both wr_en and rd_en simultaneously, verify only write occurs (count=1), no read data is consumed, and empty flag clears.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-005",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Pointer Wraparound: Verify correct behavior when r",
+        "description": "Pointer Wraparound: Verify correct behavior when read/write pointers wrap around from (DEPTH-1) to 0, including data integrity and flag accuracy.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Write DEPTH entries, read DEPTH entries (forcing wraparound), write DEPTH more entries, read all back. Verify data integrity across wraparound boundary and flag correctness.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-006",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Rapid Fill/Empty Cycles: Verify stability during r",
+        "description": "Rapid Fill/Empty Cycles: Verify stability during rapid transitions between full and empty states without intermediate stable states.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Alternate between filling FIFO completely and emptying it completely in rapid succession. Monitor for flag glitches, count errors, or data corruption.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-007",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Single Entry Operation: Verify correct behavior wh",
+        "description": "Single Entry Operation: Verify correct behavior when FIFO has exactly 1 entry (almost_empty asserted, count=1).",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Write one entry, verify almost_empty=1, empty=0, count=1. Read entry, verify transitions to empty. Test simultaneous R/W with count=1.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-008",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Reset During Operations: Verify clean recovery whe",
+        "description": "Reset During Operations: Verify clean recovery when reset asserted during active read/write operations at various fill levels.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Partially fill FIFO, assert reset during write operation. Verify all pointers reset, flags correct (empty=1, full=0), count=0. Repeat during read and simultaneous R/W.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-009",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Back-to-Back Operations: Verify correct behavior w",
+        "description": "Back-to-Back Operations: Verify correct behavior with consecutive write or read operations with no idle cycles between them.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Perform DEPTH consecutive writes without gaps, verify all data stored correctly. Perform DEPTH consecutive reads, verify all data retrieved in order. Test mixed back-to-back R/W.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-010",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Data Patterns: Verify integrity with various data ",
+        "description": "Data Patterns: Verify integrity with various data patterns including all 0s, all 1s, random data, walking 1s, walking 0s, and alternating patterns.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Write each pattern type to FIFO, read back and compare. Test patterns at various fill levels. Verify no bit corruption or pattern-dependent failures.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-011",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Almost Full Boundary: Verify almost_full flag beha",
+        "description": "Almost Full Boundary: Verify almost_full flag behavior at count=DEPTH-2 to DEPTH-1 transition and back.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Fill FIFO to DEPTH-2 entries, verify almost_full=0. Write one more (count=DEPTH-1), verify almost_full=1. Write/read to test transitions around this boundary.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-012",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Almost Empty Boundary: Verify almost_empty flag be",
+        "description": "Almost Empty Boundary: Verify almost_empty flag behavior at count=1 to 2 transition and back.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Write 2 entries, verify almost_empty=0. Read one (count=1), verify almost_empty=1. Write/read to test transitions around this boundary.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-013",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Minimum Depth FIFO: Verify correct operation with ",
+        "description": "Minimum Depth FIFO: Verify correct operation with DEPTH=2 (minimum practical depth) where almost_full and full are adjacent states.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Instantiate FIFO with DEPTH=2, verify all operations, flags, and corner cases work correctly with minimal depth.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-014",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Maximum Data Width: Verify correct operation with ",
+        "description": "Maximum Data Width: Verify correct operation with large DATA_WIDTH values (e.g., 128, 256 bits) to test memory array implementation.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Instantiate FIFO with DATA_WIDTH=128 or 256, perform full test suite, verify no width-related issues in storage or retrieval.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-015",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Pointer Collision: Verify correct behavior when re",
+        "description": "Pointer Collision: Verify correct behavior when read and write pointers are equal in both empty and full conditions.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Monitor internal pointers. When empty (pointers equal), verify empty=1. Fill to full (pointers equal again), verify full=1. Ensure correct differentiation.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-016",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Count Increment/Decrement: Verify count correctly ",
+        "description": "Count Increment/Decrement: Verify count correctly increments on write-only, decrements on read-only, and stays same on simultaneous R/W.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Test each scenario at various fill levels. Verify count changes by exactly +1, -1, or 0. Check for off-by-one errors.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-017",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Flag Coherency: Verify all flags (full, empty, alm",
+        "description": "Flag Coherency: Verify all flags (full, empty, almost_full, almost_empty) are mutually consistent with count value at all times.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Create checker that validates flag states against count: empty iff count=0, full iff count=DEPTH, almost_empty iff count=1, almost_full iff count=DEPTH-1.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-018",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Asynchronous Reset Timing: Verify reset can be ass",
+        "description": "Asynchronous Reset Timing: Verify reset can be asserted/deasserted at any point in clock cycle and FIFO recovers correctly.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Apply reset at various phases relative to clock edge during active operations. Verify clean reset and proper operation after reset release.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-019",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Sustained Full Condition: Verify FIFO remains stab",
+        "description": "Sustained Full Condition: Verify FIFO remains stable when held in full state for extended period with continuous write attempts.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Fill FIFO, hold wr_en=1 with rd_en=0 for many cycles. Verify full flag stays asserted, count stays at DEPTH, no overflow or corruption.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-020",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Sustained Empty Condition: Verify FIFO remains sta",
+        "description": "Sustained Empty Condition: Verify FIFO remains stable when held in empty state for extended period with continuous read attempts.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Empty FIFO, hold rd_en=1 with wr_en=0 for many cycles. Verify empty flag stays asserted, count stays at 0, no underflow or rd_data corruption.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-021",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Alternating Single R/W: Verify correct operation w",
+        "description": "Alternating Single R/W: Verify correct operation with alternating single write and single read operations maintaining steady-state count.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Write one entry, read one entry, repeat for many cycles. Verify count oscillates between 0 and 1, flags toggle correctly, data integrity maintained.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-022",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Non-Power-of-2 Depth: Verify correct operation wit",
+        "description": "Non-Power-of-2 Depth: Verify correct operation with DEPTH values that are not powers of 2 (e.g., 10, 17, 31).",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Instantiate FIFO with non-power-of-2 DEPTH, verify pointer wraparound works correctly, count reaches exact DEPTH value, no off-by-one errors.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-023",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Simultaneous R/W in Normal State: Verify simultane",
+        "description": "Simultaneous R/W in Normal State: Verify simultaneous read/write in normal state (not empty or full) performs both operations correctly.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Partially fill FIFO (count between 1 and DEPTH-1), assert both wr_en and rd_en. Verify count unchanged, write data stored, read data retrieved, pointers both advance.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-024",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Flag Transition Timing: Verify flags transition on",
+        "description": "Flag Transition Timing: Verify flags transition on correct clock edge relative to count changes, with no combinational glitches.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Monitor flag transitions with fine timing resolution. Verify all flags update synchronously with clock edge, no intermediate glitches during transitions.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "intent_CC-025",
+      "type": "SpecIntent",
+      "attrs": {
+        "name": "Stress Test - Random Operations: Verify correct op",
+        "description": "Stress Test - Random Operations: Verify correct operation under random sequence of reads, writes, and simultaneous operations at random intervals.",
+        "priority": 0.9,
+        "category": "corner_case",
+        "how_to_test": "Generate constrained random stimulus (respecting full/empty conditions). Run for thousands of cycles. Verify data integrity, flag correctness, count accuracy throughout.",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "module_sync_fifo",
+      "type": "RTLModule",
+      "attrs": {
+        "name": "sync_fifo",
+        "description": "Top-level synchronous FIFO module implementing circular buffer with read/write pointers, status flags, and entry counting",
+        "num_ports": 11,
+        "num_fsms": 2,
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "signal_sync_fifo_clk",
+      "type": "Signal",
+      "attrs": {
+        "name": "clk",
+        "module": "sync_fifo",
+        "width": 1,
+        "direction": "input",
+        "description": "System clock - all operations synchronous to rising edge",
+        "coverage": 0.0,
+        "toggle_coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "signal_sync_fifo_rst_n",
+      "type": "Signal",
+      "attrs": {
+        "name": "rst_n",
+        "module": "sync_fifo",
+        "width": 1,
+        "direction": "input",
+        "description": "Active-low asynchronous reset - clears FIFO and resets all pointers",
+        "coverage": 0.0,
+        "toggle_coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "signal_sync_fifo_wr_en",
+      "type": "Signal",
+      "attrs": {
+        "name": "wr_en",
+        "module": "sync_fifo",
+        "width": 1,
+        "direction": "input",
+        "description": "Write enable - when high, writes wr_data to FIFO if not full",
+        "coverage": 0.0,
+        "toggle_coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "signal_sync_fifo_rd_en",
+      "type": "Signal",
+      "attrs": {
+        "name": "rd_en",
+        "module": "sync_fifo",
+        "width": 1,
+        "direction": "input",
+        "description": "Read enable - when high, reads data from FIFO if not empty",
+        "coverage": 0.0,
+        "toggle_coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "signal_sync_fifo_wr_data",
+      "type": "Signal",
+      "attrs": {
+        "name": "wr_data",
+        "module": "sync_fifo",
+        "width": "DATA_WIDTH",
+        "direction": "input",
+        "description": "Write data input - data to be written into FIFO",
+        "coverage": 0.0,
+        "toggle_coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "signal_sync_fifo_rd_data",
+      "type": "Signal",
+      "attrs": {
+        "name": "rd_data",
+        "module": "sync_fifo",
+        "width": "DATA_WIDTH",
+        "direction": "output",
+        "description": "Read data output - data read from FIFO head",
+        "coverage": 0.0,
+        "toggle_coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "signal_sync_fifo_full",
+      "type": "Signal",
+      "attrs": {
+        "name": "full",
+        "module": "sync_fifo",
+        "width": 1,
+        "direction": "output",
+        "description": "FIFO full flag - asserted when count equals DEPTH",
+        "coverage": 0.0,
+        "toggle_coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "signal_sync_fifo_empty",
+      "type": "Signal",
+      "attrs": {
+        "name": "empty",
+        "module": "sync_fifo",
+        "width": 1,
+        "direction": "output",
+        "description": "FIFO empty flag - asserted when count equals 0",
+        "coverage": 0.0,
+        "toggle_coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "signal_sync_fifo_almost_full",
+      "type": "Signal",
+      "attrs": {
+        "name": "almost_full",
+        "module": "sync_fifo",
+        "width": 1,
+        "direction": "output",
+        "description": "Almost full flag - asserted when count equals DEPTH-1",
+        "coverage": 0.0,
+        "toggle_coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "signal_sync_fifo_almost_empty",
+      "type": "Signal",
+      "attrs": {
+        "name": "almost_empty",
+        "module": "sync_fifo",
+        "width": 1,
+        "direction": "output",
+        "description": "Almost empty flag - asserted when count equals 1",
+        "coverage": 0.0,
+        "toggle_coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "signal_sync_fifo_count",
+      "type": "Signal",
+      "attrs": {
+        "name": "count",
+        "module": "sync_fifo",
+        "width": "clog2(DEPTH+1)",
+        "direction": "output",
+        "description": "Current number of entries in FIFO (0 to DEPTH)",
+        "coverage": 0.0,
+        "toggle_coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "state_sync_fifo_fifo_state_machine_EMPTY",
+      "type": "FSMState",
+      "attrs": {
+        "name": "EMPTY",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "state_sync_fifo_fifo_state_machine_NORMAL",
+      "type": "FSMState",
+      "attrs": {
+        "name": "NORMAL",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "state_sync_fifo_fifo_state_machine_ALMOST_FULL",
+      "type": "FSMState",
+      "attrs": {
+        "name": "ALMOST_FULL",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "state_sync_fifo_fifo_state_machine_FULL",
+      "type": "FSMState",
+      "attrs": {
+        "name": "FULL",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_EMPTY_to_ALMOST_EMPTY",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "EMPTY",
+        "to_state": "ALMOST_EMPTY",
+        "condition": "wr_en && !rd_en && count==0",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_EMPTY_to_NORMAL",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "EMPTY",
+        "to_state": "NORMAL",
+        "condition": "wr_en && !rd_en && DEPTH>2",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_ALMOST_EMPTY_to_EMPTY",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "ALMOST_EMPTY",
+        "to_state": "EMPTY",
+        "condition": "rd_en && !wr_en && count==1",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_ALMOST_EMPTY_to_NORMAL",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "ALMOST_EMPTY",
+        "to_state": "NORMAL",
+        "condition": "wr_en && !rd_en && count==1",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_ALMOST_EMPTY_to_ALMOST_EMPTY",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "ALMOST_EMPTY",
+        "to_state": "ALMOST_EMPTY",
+        "condition": "(wr_en && rd_en) || (!wr_en && !rd_en)",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_NORMAL_to_ALMOST_EMPTY",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "NORMAL",
+        "to_state": "ALMOST_EMPTY",
+        "condition": "rd_en && !wr_en && count==2",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_NORMAL_to_ALMOST_FULL",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "NORMAL",
+        "to_state": "ALMOST_FULL",
+        "condition": "wr_en && !rd_en && count==DEPTH-2",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_NORMAL_to_NORMAL",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "NORMAL",
+        "to_state": "NORMAL",
+        "condition": "(wr_en && rd_en) || (!wr_en && !rd_en) || (count between 2 and DEPTH-2)",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_ALMOST_FULL_to_NORMAL",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "ALMOST_FULL",
+        "to_state": "NORMAL",
+        "condition": "rd_en && !wr_en && count==DEPTH-1",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_ALMOST_FULL_to_FULL",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "ALMOST_FULL",
+        "to_state": "FULL",
+        "condition": "wr_en && !rd_en && count==DEPTH-1",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_ALMOST_FULL_to_ALMOST_FULL",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "ALMOST_FULL",
+        "to_state": "ALMOST_FULL",
+        "condition": "(wr_en && rd_en) || (!wr_en && !rd_en)",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_FULL_to_ALMOST_FULL",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "FULL",
+        "to_state": "ALMOST_FULL",
+        "condition": "rd_en && !wr_en && count==DEPTH",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_FULL_to_NORMAL",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "FULL",
+        "to_state": "NORMAL",
+        "condition": "rd_en && wr_en && count==DEPTH",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_FULL_to_FULL",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "FULL",
+        "to_state": "FULL",
+        "condition": "!rd_en || (wr_en && !rd_en)",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_fifo_state_machine_*_to_EMPTY",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "*",
+        "to_state": "EMPTY",
+        "condition": "!rst_n",
+        "fsm": "fifo_state_machine",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "state_sync_fifo_pointer_management_IDLE",
+      "type": "FSMState",
+      "attrs": {
+        "name": "IDLE",
+        "fsm": "pointer_management",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "state_sync_fifo_pointer_management_WRITE_ONLY",
+      "type": "FSMState",
+      "attrs": {
+        "name": "WRITE_ONLY",
+        "fsm": "pointer_management",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "state_sync_fifo_pointer_management_READ_ONLY",
+      "type": "FSMState",
+      "attrs": {
+        "name": "READ_ONLY",
+        "fsm": "pointer_management",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "state_sync_fifo_pointer_management_READ_WRITE",
+      "type": "FSMState",
+      "attrs": {
+        "name": "READ_WRITE",
+        "fsm": "pointer_management",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_pointer_management_IDLE_to_WRITE_ONLY",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "IDLE",
+        "to_state": "WRITE_ONLY",
+        "condition": "wr_en && !rd_en && !full",
+        "fsm": "pointer_management",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_pointer_management_IDLE_to_READ_ONLY",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "IDLE",
+        "to_state": "READ_ONLY",
+        "condition": "rd_en && !wr_en && !empty",
+        "fsm": "pointer_management",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_pointer_management_IDLE_to_READ_WRITE",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "IDLE",
+        "to_state": "READ_WRITE",
+        "condition": "wr_en && rd_en && !empty && !full",
+        "fsm": "pointer_management",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_pointer_management_WRITE_ONLY_to_IDLE",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "WRITE_ONLY",
+        "to_state": "IDLE",
+        "condition": "operation complete",
+        "fsm": "pointer_management",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_pointer_management_READ_ONLY_to_IDLE",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "READ_ONLY",
+        "to_state": "IDLE",
+        "condition": "operation complete",
+        "fsm": "pointer_management",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_pointer_management_READ_WRITE_to_IDLE",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "READ_WRITE",
+        "to_state": "IDLE",
+        "condition": "operation complete",
+        "fsm": "pointer_management",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "trans_sync_fifo_pointer_management_*_to_IDLE",
+      "type": "FSMTransition",
+      "attrs": {
+        "from_state": "*",
+        "to_state": "IDLE",
+        "condition": "!rst_n",
+        "fsm": "pointer_management",
+        "module": "sync_fifo",
+        "coverage": 0.0,
+        "hit_count": 0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_full_flag_correct",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_full_flag_correct",
+        "type": "safety",
+        "description": "Full flag asserted if and only if count equals DEPTH",
+        "sva_template": "property p_full_flag; @(posedge clk) disable iff (!rst_n) full == (count == DEPTH); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_empty_flag_correct",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_empty_flag_correct",
+        "type": "safety",
+        "description": "Empty flag asserted if and only if count equals 0",
+        "sva_template": "property p_empty_flag; @(posedge clk) disable iff (!rst_n) empty == (count == 0); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_almost_full_correct",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_almost_full_correct",
+        "type": "safety",
+        "description": "Almost full flag asserted if and only if count equals DEPTH-1",
+        "sva_template": "property p_almost_full; @(posedge clk) disable iff (!rst_n) almost_full == (count == DEPTH-1); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_almost_empty_correct",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_almost_empty_correct",
+        "type": "safety",
+        "description": "Almost empty flag asserted if and only if count equals 1",
+        "sva_template": "property p_almost_empty; @(posedge clk) disable iff (!rst_n) almost_empty == (count == 1); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_count_bounds",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_count_bounds",
+        "type": "safety",
+        "description": "Count never exceeds DEPTH or goes below 0",
+        "sva_template": "property p_count_bounds; @(posedge clk) disable iff (!rst_n) (count >= 0) && (count <= DEPTH); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_count_transition",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_count_transition",
+        "type": "safety",
+        "description": "Count changes by at most \u00b11 per cycle",
+        "sva_template": "property p_count_transition; @(posedge clk) disable iff (!rst_n) (count - $past(count)) inside {-1, 0, 1}; endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_mutual_exclusion",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_mutual_exclusion",
+        "type": "safety",
+        "description": "Full and empty never asserted simultaneously",
+        "sva_template": "property p_mutual_exclusion; @(posedge clk) disable iff (!rst_n) !(full && empty); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_no_write_when_full",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_no_write_when_full",
+        "type": "protocol",
+        "description": "Write pointer does not advance when full without simultaneous read",
+        "sva_template": "property p_no_write_full; @(posedge clk) disable iff (!rst_n) (full && wr_en && !rd_en) |=> (wr_ptr == $past(wr_ptr)); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_no_read_when_empty",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_no_read_when_empty",
+        "type": "protocol",
+        "description": "Read pointer does not advance when empty without simultaneous write",
+        "sva_template": "property p_no_read_empty; @(posedge clk) disable iff (!rst_n) (empty && rd_en && !wr_en) |=> (rd_ptr == $past(rd_ptr)); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_count_increment_write",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_count_increment_write",
+        "type": "protocol",
+        "description": "Count increments by 1 on write-only when not full",
+        "sva_template": "property p_count_inc; @(posedge clk) disable iff (!rst_n) (wr_en && !rd_en && !full) |=> (count == $past(count) + 1); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_count_decrement_read",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_count_decrement_read",
+        "type": "protocol",
+        "description": "Count decrements by 1 on read-only when not empty",
+        "sva_template": "property p_count_dec; @(posedge clk) disable iff (!rst_n) (rd_en && !wr_en && !empty) |=> (count == $past(count) - 1); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_count_stable_simul_rw",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_count_stable_simul_rw",
+        "type": "protocol",
+        "description": "Count unchanged on simultaneous R/W in normal state",
+        "sva_template": "property p_count_stable; @(posedge clk) disable iff (!rst_n) (wr_en && rd_en && !empty && !full) |=> (count == $past(count)); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_reset_clears_fifo",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_reset_clears_fifo",
+        "type": "safety",
+        "description": "Reset clears FIFO to empty state with count=0",
+        "sva_template": "property p_reset; @(posedge clk) !rst_n |=> (empty && !full && count == 0); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_wr_ptr_wraparound",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_wr_ptr_wraparound",
+        "type": "protocol",
+        "description": "Write pointer wraps from DEPTH-1 to 0",
+        "sva_template": "property p_wr_wrap; @(posedge clk) disable iff (!rst_n) (wr_ptr == DEPTH-1 && wr_valid) |=> (wr_ptr == 0); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_rd_ptr_wraparound",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_rd_ptr_wraparound",
+        "type": "protocol",
+        "description": "Read pointer wraps from DEPTH-1 to 0",
+        "sva_template": "property p_rd_wrap; @(posedge clk) disable iff (!rst_n) (rd_ptr == DEPTH-1 && rd_valid) |=> (rd_ptr == 0); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_wr_ptr_bounds",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_wr_ptr_bounds",
+        "type": "safety",
+        "description": "Write pointer stays within valid range [0, DEPTH-1]",
+        "sva_template": "property p_wr_bounds; @(posedge clk) disable iff (!rst_n) wr_ptr < DEPTH; endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_rd_ptr_bounds",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_rd_ptr_bounds",
+        "type": "safety",
+        "description": "Read pointer stays within valid range [0, DEPTH-1]",
+        "sva_template": "property p_rd_bounds; @(posedge clk) disable iff (!rst_n) rd_ptr < DEPTH; endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_simul_rw_empty",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_simul_rw_empty",
+        "type": "protocol",
+        "description": "Simultaneous R/W when empty performs write only",
+        "sva_template": "property p_simul_empty; @(posedge clk) disable iff (!rst_n) (empty && wr_en && rd_en) |=> (count == 1 && !empty); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_simul_rw_full",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_simul_rw_full",
+        "type": "protocol",
+        "description": "Simultaneous R/W when full performs read only",
+        "sva_template": "property p_simul_full; @(posedge clk) disable iff (!rst_n) (full && wr_en && rd_en) |=> (count == DEPTH-1 && !full); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_full_implies_not_empty",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_full_implies_not_empty",
+        "type": "safety",
+        "description": "If full is asserted, empty must be deasserted",
+        "sva_template": "property p_full_not_empty; @(posedge clk) disable iff (!rst_n) full |-> !empty; endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_empty_implies_not_full",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_empty_implies_not_full",
+        "type": "safety",
+        "description": "If empty is asserted, full must be deasserted",
+        "sva_template": "property p_empty_not_full; @(posedge clk) disable iff (!rst_n) empty |-> !full; endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_almost_full_implies_not_empty",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_almost_full_implies_not_empty",
+        "type": "safety",
+        "description": "If almost_full is asserted, empty must be deasserted",
+        "sva_template": "property p_afull_not_empty; @(posedge clk) disable iff (!rst_n) almost_full |-> !empty; endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_almost_empty_implies_not_full",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_almost_empty_implies_not_full",
+        "type": "safety",
+        "description": "If almost_empty is asserted, full must be deasserted",
+        "sva_template": "property p_aempty_not_full; @(posedge clk) disable iff (!rst_n) almost_empty |-> !full; endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_wr_valid_definition",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_wr_valid_definition",
+        "type": "protocol",
+        "description": "Write valid signal correctly defined",
+        "sva_template": "property p_wr_valid; @(posedge clk) disable iff (!rst_n) wr_valid == ((wr_en && !full) || (wr_en && rd_en && empty)); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_rd_valid_definition",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_rd_valid_definition",
+        "type": "protocol",
+        "description": "Read valid signal correctly defined",
+        "sva_template": "property p_rd_valid; @(posedge clk) disable iff (!rst_n) rd_valid == ((rd_en && !empty) || (wr_en && rd_en && full)); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_data_stable_when_empty",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_data_stable_when_empty",
+        "type": "liveness",
+        "description": "Read data remains stable when empty and no write occurs",
+        "sva_template": "property p_data_stable; @(posedge clk) disable iff (!rst_n) (empty && !wr_en) |=> (rd_data == $past(rd_data)); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_flag_update_timing",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_flag_update_timing",
+        "type": "protocol",
+        "description": "Flags update synchronously with count changes",
+        "sva_template": "property p_flag_timing; @(posedge clk) disable iff (!rst_n) (count != $past(count)) |-> (full != $past(full)) || (empty != $past(empty)) || (almost_full != $past(almost_full)) || (almost_empty != $past(almost_empty)) || (count == $past(count) + 1) || (count == $past(count) - 1); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_no_overflow",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_no_overflow",
+        "type": "safety",
+        "description": "Count never exceeds DEPTH (overflow protection)",
+        "sva_template": "property p_no_overflow; @(posedge clk) disable iff (!rst_n) count <= DEPTH; endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_no_underflow",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_no_underflow",
+        "type": "safety",
+        "description": "Count never goes below 0 (underflow protection)",
+        "sva_template": "property p_no_underflow; @(posedge clk) disable iff (!rst_n) count >= 0; endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_write_increments_ptr",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_write_increments_ptr",
+        "type": "protocol",
+        "description": "Valid write increments write pointer",
+        "sva_template": "property p_wr_inc; @(posedge clk) disable iff (!rst_n) (wr_valid && wr_ptr != DEPTH-1) |=> (wr_ptr == $past(wr_ptr) + 1); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "assertion_assert_read_increments_ptr",
+      "type": "Assertion",
+      "attrs": {
+        "name": "assert_read_increments_ptr",
+        "type": "protocol",
+        "description": "Valid read increments read pointer",
+        "sva_template": "property p_rd_inc; @(posedge clk) disable iff (!rst_n) (rd_valid && rd_ptr != DEPTH-1) |=> (rd_ptr == $past(rd_ptr) + 1); endproperty",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_count_values_cp_count: count with bins for each value [0:DEPTH]",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_count: count with bins for each value [0:DEPTH]",
+        "covergroup": "cg_count_values",
+        "description": "Cover all possible count values from 0 to DEPTH",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_flag_states_cp_full: full flag {0, 1}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_full: full flag {0, 1}",
+        "covergroup": "cg_flag_states",
+        "description": "Cover all valid flag combinations",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_flag_states_cp_empty: empty flag {0, 1}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_empty: empty flag {0, 1}",
+        "covergroup": "cg_flag_states",
+        "description": "Cover all valid flag combinations",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_flag_states_cp_almost_full: almost_full flag {0, 1}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_almost_full: almost_full flag {0, 1}",
+        "covergroup": "cg_flag_states",
+        "description": "Cover all valid flag combinations",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_flag_states_cp_almost_empty: almost_empty flag {0, 1}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_almost_empty: almost_empty flag {0, 1}",
+        "covergroup": "cg_flag_states",
+        "description": "Cover all valid flag combinations",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_operations_cp_operation: {WRITE_ONLY, READ_ONLY, SIMUL_RW, NO_OP}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_operation: {WRITE_ONLY, READ_ONLY, SIMUL_RW, NO_OP}",
+        "covergroup": "cg_operations",
+        "description": "Cover all operation types in all states",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_operations_cp_fifo_state: {EMPTY, ALMOST_EMPTY, NORMAL, ALMOST_FULL, FULL}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_fifo_state: {EMPTY, ALMOST_EMPTY, NORMAL, ALMOST_FULL, FULL}",
+        "covergroup": "cg_operations",
+        "description": "Cover all operation types in all states",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_state_transitions_cp_state_from: {EMPTY, ALMOST_EMPTY, NORMAL, ALMOST_FULL, FULL}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_state_from: {EMPTY, ALMOST_EMPTY, NORMAL, ALMOST_FULL, FULL}",
+        "covergroup": "cg_state_transitions",
+        "description": "Cover all valid FSM state transitions",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_state_transitions_cp_state_to: {EMPTY, ALMOST_EMPTY, NORMAL, ALMOST_FULL, FULL}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_state_to: {EMPTY, ALMOST_EMPTY, NORMAL, ALMOST_FULL, FULL}",
+        "covergroup": "cg_state_transitions",
+        "description": "Cover all valid FSM state transitions",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_boundary_conditions_cp_boundaries: {COUNT_0_TO_1, COUNT_1_TO_0, COUNT_1_TO_2, COUNT_2_TO_1, COUNT_DEPTH_MINUS_2_TO_DEPTH_MINUS_1, COUNT_DEPTH_MINUS_1_TO_DEPTH_MINUS_2, COUNT_DEPTH_MINUS_1_TO_DEPTH, COUNT_DEPTH_TO_DEPTH_MINUS_1}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_boundaries: {COUNT_0_TO_1, COUNT_1_TO_0, COUNT_1_TO_2, COUNT_2_TO_1, COUNT_DEPTH_MINUS_2_TO_DEPTH_MINUS_1, COUNT_DEPTH_MINUS_1_TO_DEPTH_MINUS_2, COUNT_DEPTH_MINUS_1_TO_DEPTH, COUNT_DEPTH_TO_DEPTH_MINUS_1}",
+        "covergroup": "cg_boundary_conditions",
+        "description": "Cover critical boundary transitions",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_corner_cases_cp_corner: {WRITE_WHEN_FULL, READ_WHEN_EMPTY, SIMUL_RW_FULL, SIMUL_RW_EMPTY, WR_PTR_WRAP, RD_PTR_WRAP, RESET_DURING_WRITE, RESET_DURING_READ, BACK_TO_BACK_WR, BACK_TO_BACK_RD, SUSTAINED_FULL, SUSTAINED_EMPTY}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_corner: {WRITE_WHEN_FULL, READ_WHEN_EMPTY, SIMUL_RW_FULL, SIMUL_RW_EMPTY, WR_PTR_WRAP, RD_PTR_WRAP, RESET_DURING_WRITE, RESET_DURING_READ, BACK_TO_BACK_WR, BACK_TO_BACK_RD, SUSTAINED_FULL, SUSTAINED_EMPTY}",
+        "covergroup": "cg_corner_cases",
+        "description": "Cover all identified corner cases",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_data_patterns_cp_data_pattern: {ALL_ZEROS, ALL_ONES, ALTERNATING_01, ALTERNATING_10, WALKING_ONES, WALKING_ZEROS, RANDOM}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_data_pattern: {ALL_ZEROS, ALL_ONES, ALTERNATING_01, ALTERNATING_10, WALKING_ONES, WALKING_ZEROS, RANDOM}",
+        "covergroup": "cg_data_patterns",
+        "description": "Cover various data patterns written to FIFO",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_pointer_values_cp_wr_ptr: wr_ptr with bins for each value [0:DEPTH-1]",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_wr_ptr: wr_ptr with bins for each value [0:DEPTH-1]",
+        "covergroup": "cg_pointer_values",
+        "description": "Cover all pointer values and relationships",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_pointer_values_cp_rd_ptr: rd_ptr with bins for each value [0:DEPTH-1]",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_rd_ptr: rd_ptr with bins for each value [0:DEPTH-1]",
+        "covergroup": "cg_pointer_values",
+        "description": "Cover all pointer values and relationships",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_pointer_values_cp_ptr_relation: {PTR_EQUAL, WR_AHEAD, RD_AHEAD}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_ptr_relation: {PTR_EQUAL, WR_AHEAD, RD_AHEAD}",
+        "covergroup": "cg_pointer_values",
+        "description": "Cover all pointer values and relationships",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_count_changes_cp_count_delta: {INCREMENT, DECREMENT, NO_CHANGE}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_count_delta: {INCREMENT, DECREMENT, NO_CHANGE}",
+        "covergroup": "cg_count_changes",
+        "description": "Cover all types of count changes",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_count_changes_cp_count_before: count value before operation",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_count_before: count value before operation",
+        "covergroup": "cg_count_changes",
+        "description": "Cover all types of count changes",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_count_changes_cp_count_after: count value after operation",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_count_after: count value after operation",
+        "covergroup": "cg_count_changes",
+        "description": "Cover all types of count changes",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_reset_scenarios_cp_reset_state: {RESET_WHEN_EMPTY, RESET_WHEN_FULL, RESET_WHEN_PARTIAL, RESET_DURING_WRITE, RESET_DURING_READ, RESET_DURING_SIMUL_RW}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_reset_state: {RESET_WHEN_EMPTY, RESET_WHEN_FULL, RESET_WHEN_PARTIAL, RESET_DURING_WRITE, RESET_DURING_READ, RESET_DURING_SIMUL_RW}",
+        "covergroup": "cg_reset_scenarios",
+        "description": "Cover reset in various conditions",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_simultaneous_rw_cp_simul_state: {SIMUL_EMPTY, SIMUL_ALMOST_EMPTY, SIMUL_NORMAL, SIMUL_ALMOST_FULL, SIMUL_FULL}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_simul_state: {SIMUL_EMPTY, SIMUL_ALMOST_EMPTY, SIMUL_NORMAL, SIMUL_ALMOST_FULL, SIMUL_FULL}",
+        "covergroup": "cg_simultaneous_rw",
+        "description": "Cover simultaneous R/W in all states",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_back_to_back_cp_sequence: {CONSECUTIVE_WRITES, CONSECUTIVE_READS, ALTERNATING_WR_RD, ALTERNATING_RD_WR}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_sequence: {CONSECUTIVE_WRITES, CONSECUTIVE_READS, ALTERNATING_WR_RD, ALTERNATING_RD_WR}",
+        "covergroup": "cg_back_to_back",
+        "description": "Cover back-to-back operation sequences",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_flag_transitions_cp_full_trans: {FULL_ASSERT, FULL_DEASSERT}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_full_trans: {FULL_ASSERT, FULL_DEASSERT}",
+        "covergroup": "cg_flag_transitions",
+        "description": "Cover flag assertion and deassertion events",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_flag_transitions_cp_empty_trans: {EMPTY_ASSERT, EMPTY_DEASSERT}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_empty_trans: {EMPTY_ASSERT, EMPTY_DEASSERT}",
+        "covergroup": "cg_flag_transitions",
+        "description": "Cover flag assertion and deassertion events",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_flag_transitions_cp_afull_trans: {AFULL_ASSERT, AFULL_DEASSERT}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_afull_trans: {AFULL_ASSERT, AFULL_DEASSERT}",
+        "covergroup": "cg_flag_transitions",
+        "description": "Cover flag assertion and deassertion events",
+        "coverage": 0.0,
+        "covered": false
+      }
+    },
+    {
+      "id": "coverpoint_cg_flag_transitions_cp_aempty_trans: {AEMPTY_ASSERT, AEMPTY_DEASSERT}",
+      "type": "Coverpoint",
+      "attrs": {
+        "name": "cp_aempty_trans: {AEMPTY_ASSERT, AEMPTY_DEASSERT}",
+        "covergroup": "cg_flag_transitions",
+        "description": "Cover flag assertion and deassertion events",
+        "coverage": 0.0,
+        "covered": false
+      }
+    }
+  ],
+  "edges": [
+    {
+      "src": "intent_REQ-001",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-002",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-003",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-004",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-005",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-006",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-007",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-008",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-009",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-010",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-011",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-012",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-013",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-014",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-015",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-016",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-017",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-018",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-019",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_REQ-020",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-001",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-002",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-003",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-004",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-005",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-006",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-007",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-008",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-009",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-010",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-011",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-012",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-013",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-014",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-015",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-016",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-017",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-018",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-019",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-020",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-021",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-022",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-023",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-024",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "intent_CC-025",
+      "dst": "module_sync_fifo",
+      "type": "spec_mentions",
+      "attrs": {}
+    },
+    {
+      "src": "signal_sync_fifo_clk",
+      "dst": "module_sync_fifo",
+      "type": "drives",
+      "attrs": {
+        "direction": "input"
+      }
+    },
+    {
+      "src": "signal_sync_fifo_rst_n",
+      "dst": "module_sync_fifo",
+      "type": "drives",
+      "attrs": {
+        "direction": "input"
+      }
+    },
+    {
+      "src": "signal_sync_fifo_wr_en",
+      "dst": "module_sync_fifo",
+      "type": "drives",
+      "attrs": {
+        "direction": "input"
+      }
+    },
+    {
+      "src": "signal_sync_fifo_rd_en",
+      "dst": "module_sync_fifo",
+      "type": "drives",
+      "attrs": {
+        "direction": "input"
+      }
+    },
+    {
+      "src": "signal_sync_fifo_wr_data",
+      "dst": "module_sync_fifo",
+      "type": "drives",
+      "attrs": {
+        "direction": "input"
+      }
+    },
+    {
+      "src": "signal_sync_fifo_rd_data",
+      "dst": "module_sync_fifo",
+      "type": "drives",
+      "attrs": {
+        "direction": "output"
+      }
+    },
+    {
+      "src": "signal_sync_fifo_full",
+      "dst": "module_sync_fifo",
+      "type": "drives",
+      "attrs": {
+        "direction": "output"
+      }
+    },
+    {
+      "src": "signal_sync_fifo_empty",
+      "dst": "module_sync_fifo",
+      "type": "drives",
+      "attrs": {
+        "direction": "output"
+      }
+    },
+    {
+      "src": "signal_sync_fifo_almost_full",
+      "dst": "module_sync_fifo",
+      "type": "drives",
+      "attrs": {
+        "direction": "output"
+      }
+    },
+    {
+      "src": "signal_sync_fifo_almost_empty",
+      "dst": "module_sync_fifo",
+      "type": "drives",
+      "attrs": {
+        "direction": "output"
+      }
+    },
+    {
+      "src": "signal_sync_fifo_count",
+      "dst": "module_sync_fifo",
+      "type": "drives",
+      "attrs": {
+        "direction": "output"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_EMPTY",
+      "dst": "module_sync_fifo",
+      "type": "transition_of",
+      "attrs": {
+        "fsm": "fifo_state_machine"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_EMPTY",
+      "dst": "trans_sync_fifo_fifo_state_machine_EMPTY_to_ALMOST_EMPTY",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_EMPTY",
+      "dst": "trans_sync_fifo_fifo_state_machine_EMPTY_to_NORMAL",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_NORMAL",
+      "dst": "module_sync_fifo",
+      "type": "transition_of",
+      "attrs": {
+        "fsm": "fifo_state_machine"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_NORMAL",
+      "dst": "trans_sync_fifo_fifo_state_machine_NORMAL_to_ALMOST_EMPTY",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_NORMAL",
+      "dst": "trans_sync_fifo_fifo_state_machine_NORMAL_to_ALMOST_FULL",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_NORMAL",
+      "dst": "trans_sync_fifo_fifo_state_machine_NORMAL_to_NORMAL",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_ALMOST_FULL",
+      "dst": "module_sync_fifo",
+      "type": "transition_of",
+      "attrs": {
+        "fsm": "fifo_state_machine"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_ALMOST_FULL",
+      "dst": "trans_sync_fifo_fifo_state_machine_ALMOST_FULL_to_NORMAL",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_ALMOST_FULL",
+      "dst": "trans_sync_fifo_fifo_state_machine_ALMOST_FULL_to_FULL",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_ALMOST_FULL",
+      "dst": "trans_sync_fifo_fifo_state_machine_ALMOST_FULL_to_ALMOST_FULL",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_FULL",
+      "dst": "module_sync_fifo",
+      "type": "transition_of",
+      "attrs": {
+        "fsm": "fifo_state_machine"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_FULL",
+      "dst": "trans_sync_fifo_fifo_state_machine_FULL_to_ALMOST_FULL",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_FULL",
+      "dst": "trans_sync_fifo_fifo_state_machine_FULL_to_NORMAL",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_fifo_state_machine_FULL",
+      "dst": "trans_sync_fifo_fifo_state_machine_FULL_to_FULL",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_fifo_state_machine_EMPTY_to_NORMAL",
+      "dst": "state_sync_fifo_fifo_state_machine_NORMAL",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_fifo_state_machine_ALMOST_EMPTY_to_EMPTY",
+      "dst": "state_sync_fifo_fifo_state_machine_EMPTY",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_fifo_state_machine_ALMOST_EMPTY_to_NORMAL",
+      "dst": "state_sync_fifo_fifo_state_machine_NORMAL",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_fifo_state_machine_NORMAL_to_ALMOST_FULL",
+      "dst": "state_sync_fifo_fifo_state_machine_ALMOST_FULL",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_fifo_state_machine_NORMAL_to_NORMAL",
+      "dst": "state_sync_fifo_fifo_state_machine_NORMAL",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_fifo_state_machine_ALMOST_FULL_to_NORMAL",
+      "dst": "state_sync_fifo_fifo_state_machine_NORMAL",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_fifo_state_machine_ALMOST_FULL_to_FULL",
+      "dst": "state_sync_fifo_fifo_state_machine_FULL",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_fifo_state_machine_ALMOST_FULL_to_ALMOST_FULL",
+      "dst": "state_sync_fifo_fifo_state_machine_ALMOST_FULL",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_fifo_state_machine_FULL_to_ALMOST_FULL",
+      "dst": "state_sync_fifo_fifo_state_machine_ALMOST_FULL",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_fifo_state_machine_FULL_to_NORMAL",
+      "dst": "state_sync_fifo_fifo_state_machine_NORMAL",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_fifo_state_machine_FULL_to_FULL",
+      "dst": "state_sync_fifo_fifo_state_machine_FULL",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_fifo_state_machine_*_to_EMPTY",
+      "dst": "state_sync_fifo_fifo_state_machine_EMPTY",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "state_sync_fifo_pointer_management_IDLE",
+      "dst": "module_sync_fifo",
+      "type": "transition_of",
+      "attrs": {
+        "fsm": "pointer_management"
+      }
+    },
+    {
+      "src": "state_sync_fifo_pointer_management_IDLE",
+      "dst": "trans_sync_fifo_pointer_management_IDLE_to_WRITE_ONLY",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_pointer_management_IDLE",
+      "dst": "trans_sync_fifo_pointer_management_IDLE_to_READ_ONLY",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_pointer_management_IDLE",
+      "dst": "trans_sync_fifo_pointer_management_IDLE_to_READ_WRITE",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_pointer_management_WRITE_ONLY",
+      "dst": "module_sync_fifo",
+      "type": "transition_of",
+      "attrs": {
+        "fsm": "pointer_management"
+      }
+    },
+    {
+      "src": "state_sync_fifo_pointer_management_WRITE_ONLY",
+      "dst": "trans_sync_fifo_pointer_management_WRITE_ONLY_to_IDLE",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_pointer_management_READ_ONLY",
+      "dst": "module_sync_fifo",
+      "type": "transition_of",
+      "attrs": {
+        "fsm": "pointer_management"
+      }
+    },
+    {
+      "src": "state_sync_fifo_pointer_management_READ_ONLY",
+      "dst": "trans_sync_fifo_pointer_management_READ_ONLY_to_IDLE",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "state_sync_fifo_pointer_management_READ_WRITE",
+      "dst": "module_sync_fifo",
+      "type": "transition_of",
+      "attrs": {
+        "fsm": "pointer_management"
+      }
+    },
+    {
+      "src": "state_sync_fifo_pointer_management_READ_WRITE",
+      "dst": "trans_sync_fifo_pointer_management_READ_WRITE_to_IDLE",
+      "type": "drives",
+      "attrs": {
+        "relation": "source"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_pointer_management_IDLE_to_WRITE_ONLY",
+      "dst": "state_sync_fifo_pointer_management_WRITE_ONLY",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_pointer_management_IDLE_to_READ_ONLY",
+      "dst": "state_sync_fifo_pointer_management_READ_ONLY",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_pointer_management_IDLE_to_READ_WRITE",
+      "dst": "state_sync_fifo_pointer_management_READ_WRITE",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_pointer_management_WRITE_ONLY_to_IDLE",
+      "dst": "state_sync_fifo_pointer_management_IDLE",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_pointer_management_READ_ONLY_to_IDLE",
+      "dst": "state_sync_fifo_pointer_management_IDLE",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_pointer_management_READ_WRITE_to_IDLE",
+      "dst": "state_sync_fifo_pointer_management_IDLE",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    },
+    {
+      "src": "trans_sync_fifo_pointer_management_*_to_IDLE",
+      "dst": "state_sync_fifo_pointer_management_IDLE",
+      "type": "drives",
+      "attrs": {
+        "relation": "target"
+      }
+    }
+  ]
+}

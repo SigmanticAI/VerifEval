@@ -1,0 +1,13 @@
+[
+  {
+    "id": "module_sync_fifo",
+    "type": "RTLModule",
+    "reason": "SpecIntent.FIFO Ordering: Data shall be read in the same orde",
+    "risk": 0.98,
+    "source_intent": "intent_REQ-001",
+    "path": [
+      "intent_REQ-001",
+      "module_sync_fifo"
+    ]
+  }
+]

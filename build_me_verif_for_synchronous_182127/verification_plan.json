@@ -1,0 +1,923 @@
+{
+  "approach": "UVM-based constrained random verification with directed tests, supplemented by formal property verification for critical properties",
+  "coverage_goals": {
+    "code_coverage": 100,
+    "functional_coverage": 100,
+    "assertion_coverage": 100,
+    "fsm_coverage": 100,
+    "toggle_coverage": 95
+  },
+  "test_categories": [
+    {
+      "name": "sanity_tests",
+      "description": "Basic functionality verification to ensure design is operational",
+      "priority": "P0",
+      "tests": [
+        {
+          "name": "test_reset",
+          "description": "Verify reset clears FIFO, sets empty=1, full=0, count=0, pointers=0",
+          "type": "directed"
+        },
+        {
+          "name": "test_basic_write_read",
+          "description": "Write 4 entries sequentially, read them back, verify FIFO ordering",
+          "type": "directed"
+        },
+        {
+          "name": "test_single_write_read",
+          "description": "Single write followed by single read, verify data integrity",
+          "type": "directed"
+        }
+      ]
+    },
+    {
+      "name": "flag_verification",
+      "description": "Comprehensive testing of all status flags",
+      "priority": "P0",
+      "tests": [
+        {
+          "name": "test_full_flag_assertion",
+          "description": "Fill FIFO to DEPTH, verify full=1, count=DEPTH, write blocked",
+          "type": "directed"
+        },
+        {
+          "name": "test_full_flag_deassertion",
+          "description": "From full state, read one entry, verify full=0, count=DEPTH-1",
+          "type": "directed"
+        },
+        {
+          "name": "test_empty_flag_assertion",
+          "description": "Empty FIFO completely, verify empty=1, count=0, read blocked",
+          "type": "directed"
+        },
+        {
+          "name": "test_empty_flag_deassertion",
+          "description": "From empty state, write one entry, verify empty=0, count=1",
+          "type": "directed"
+        },
+        {
+          "name": "test_almost_full_flag",
+          "description": "Fill to DEPTH-1, verify almost_full=1, write one more, verify almost_full=0 and full=1",
+          "type": "directed"
+        },
+        {
+          "name": "test_almost_empty_flag",
+          "description": "Write 2 entries, read 1, verify almost_empty=1, read 1 more, verify almost_empty=0 and empty=1",
+          "type": "directed"
+        },
+        {
+          "name": "test_flag_mutual_exclusion",
+          "description": "Verify full and empty never asserted simultaneously throughout random operations",
+          "type": "random"
+        },
+        {
+          "name": "test_flag_coherency",
+          "description": "Verify all flags consistent with count value at all times",
+          "type": "random"
+        }
+      ]
+    },
+    {
+      "name": "count_verification",
+      "description": "Verify count signal accuracy and transitions",
+      "priority": "P0",
+      "tests": [
+        {
+          "name": "test_count_increment",
+          "description": "Verify count increments by 1 on each write-only operation",
+          "type": "directed"
+        },
+        {
+          "name": "test_count_decrement",
+          "description": "Verify count decrements by 1 on each read-only operation",
+          "type": "directed"
+        },
+        {
+          "name": "test_count_stable_simul_rw",
+          "description": "Verify count unchanged during simultaneous R/W in normal state",
+          "type": "directed"
+        },
+        {
+          "name": "test_count_all_values",
+          "description": "Exercise all count values from 0 to DEPTH",
+          "type": "directed"
+        },
+        {
+          "name": "test_count_bounds",
+          "description": "Verify count never exceeds DEPTH or goes below 0",
+          "type": "random"
+        },
+        {
+          "name": "test_count_transitions",
+          "description": "Verify count changes by at most \u00b11 per cycle",
+          "type": "random"
+        }
+      ]
+    },
+    {
+      "name": "simultaneous_operations",
+      "description": "Test simultaneous read/write operations in all states",
+      "priority": "P0",
+      "tests": [
+        {
+          "name": "test_simul_rw_when_empty",
+          "description": "Assert wr_en and rd_en when empty, verify only write occurs, count=1",
+          "type": "directed"
+        },
+        {
+          "name": "test_simul_rw_when_full",
+          "description": "Assert wr_en and rd_en when full, verify only read occurs, count=DEPTH-1",
+          "type": "directed"
+        },
+        {
+          "name": "test_simul_rw_normal_state",
+          "description": "Simultaneous R/W in normal state, verify both operations complete, count unchanged",
+          "type": "directed"
+        },
+        {
+          "name": "test_simul_rw_almost_empty",
+          "description": "Simultaneous R/W when count=1, verify both operations, count=1",
+          "type": "directed"
+        },
+        {
+          "name": "test_simul_rw_almost_full",
+          "description": "Simultaneous R/W when count=DEPTH-1, verify both operations, count=DEPTH-1",
+          "type": "directed"
+        },
+        {
+          "name": "test_random_simul_rw",
+          "description": "Random mix of simultaneous operations at various fill levels",
+          "type": "random"
+        }
+      ]
+    },
+    {
+      "name": "boundary_conditions",
+      "description": "Test critical boundary and corner cases",
+      "priority": "P0",
+      "tests": [
+        {
+          "name": "test_write_when_full",
+          "description": "Attempt writes when full=1 without reads, verify ignored, no corruption",
+          "type": "directed"
+        },
+        {
+          "name": "test_read_when_empty",
+          "description": "Attempt reads when empty=1 without writes, verify ignored, rd_data stable",
+          "type": "directed"
+        },
+        {
+          "name": "test_single_entry_operation",
+          "description": "Test all operations when count=1 (almost_empty state)",
+          "type": "directed"
+        },
+        {
+          "name": "test_almost_full_boundary",
+          "description": "Test transitions around count=DEPTH-1 boundary",
+          "type": "directed"
+        },
+        {
+          "name": "test_almost_empty_boundary",
+          "description": "Test transitions around count=1 boundary",
+          "type": "directed"
+        },
+        {
+          "name": "test_sustained_full",
+          "description": "Hold FIFO in full state for 100+ cycles with continuous write attempts",
+          "type": "directed"
+        },
+        {
+          "name": "test_sustained_empty",
+          "description": "Hold FIFO in empty state for 100+ cycles with continuous read attempts",
+          "type": "directed"
+        }
+      ]
+    },
+    {
+      "name": "pointer_management",
+      "description": "Verify read/write pointer behavior and wraparound",
+      "priority": "P0",
+      "tests": [
+        {
+          "name": "test_write_pointer_wraparound",
+          "description": "Write DEPTH entries, verify wr_ptr wraps from DEPTH-1 to 0",
+          "type": "directed"
+        },
+        {
+          "name": "test_read_pointer_wraparound",
+          "description": "Fill FIFO, read DEPTH entries, verify rd_ptr wraps from DEPTH-1 to 0",
+          "type": "directed"
+        },
+        {
+          "name": "test_pointer_collision_empty",
+          "description": "Verify correct behavior when pointers equal in empty state",
+          "type": "directed"
+        },
+        {
+          "name": "test_pointer_collision_full",
+          "description": "Verify correct behavior when pointers equal in full state",
+          "type": "directed"
+        },
+        {
+          "name": "test_multiple_wraparounds",
+          "description": "Perform multiple complete wraparound cycles, verify data integrity",
+          "type": "directed"
+        },
+        {
+          "name": "test_pointer_bounds",
+          "description": "Verify pointers always stay within [0, DEPTH-1] range",
+          "type": "random"
+        }
+      ]
+    },
+    {
+      "name": "data_integrity",
+      "description": "Verify data is stored and retrieved correctly",
+      "priority": "P0",
+      "tests": [
+        {
+          "name": "test_fifo_ordering",
+          "description": "Write known sequence, read back, verify FIFO ordering maintained",
+          "type": "directed"
+        },
+        {
+          "name": "test_data_pattern_all_zeros",
+          "description": "Write/read all zeros pattern, verify no corruption",
+          "type": "directed"
+        },
+        {
+          "name": "test_data_pattern_all_ones",
+          "description": "Write/read all ones pattern, verify no corruption",
+          "type": "directed"
+        },
+        {
+          "name": "test_data_pattern_alternating",
+          "description": "Write/read alternating 01/10 patterns, verify no corruption",
+          "type": "directed"
+        },
+        {
+          "name": "test_data_pattern_walking_ones",
+          "description": "Write/read walking ones pattern, verify no bit corruption",
+          "type": "directed"
+        },
+        {
+          "name": "test_data_pattern_walking_zeros",
+          "description": "Write/read walking zeros pattern, verify no bit corruption",
+          "type": "directed"
+        },
+        {
+          "name": "test_random_data_integrity",
+          "description": "Write random data, read back, verify exact match using scoreboard",
+          "type": "random"
+        },
+        {
+          "name": "test_data_across_wraparound",
+          "description": "Verify data integrity across pointer wraparound boundaries",
+          "type": "directed"
+        }
+      ]
+    },
+    {
+      "name": "reset_scenarios",
+      "description": "Test reset behavior in various conditions",
+      "priority": "P1",
+      "tests": [
+        {
+          "name": "test_reset_when_empty",
+          "description": "Apply reset when FIFO empty, verify clean recovery",
+          "type": "directed"
+        },
+        {
+          "name": "test_reset_when_full",
+          "description": "Apply reset when FIFO full, verify clean recovery",
+          "type": "directed"
+        },
+        {
+          "name": "test_reset_during_write",
+          "description": "Assert reset during active write operation, verify recovery",
+          "type": "directed"
+        },
+        {
+          "name": "test_reset_during_read",
+          "description": "Assert reset during active read operation, verify recovery",
+          "type": "directed"
+        },
+        {
+          "name": "test_reset_during_simul_rw",
+          "description": "Assert reset during simultaneous R/W, verify recovery",
+          "type": "directed"
+        },
+        {
+          "name": "test_async_reset_timing",
+          "description": "Apply reset at various clock phases, verify proper synchronization",
+          "type": "directed"
+        },
+        {
+          "name": "test_multiple_resets",
+          "description": "Apply multiple reset sequences, verify consistent behavior",
+          "type": "directed"
+        }
+      ]
+    },
+    {
+      "name": "back_to_back_operations",
+      "description": "Test consecutive operations without idle cycles",
+      "priority": "P1",
+      "tests": [
+        {
+          "name": "test_back_to_back_writes",
+          "description": "Perform DEPTH consecutive writes, verify all stored correctly",
+          "type": "directed"
+        },
+        {
+          "name": "test_back_to_back_reads",
+          "description": "Perform DEPTH consecutive reads, verify all retrieved correctly",
+          "type": "directed"
+        },
+        {
+          "name": "test_continuous_write_stream",
+          "description": "Continuous writes for 1000+ cycles with intermittent reads",
+          "type": "random"
+        },
+        {
+          "name": "test_continuous_read_stream",
+          "description": "Continuous reads for 1000+ cycles with intermittent writes",
+          "type": "random"
+        },
+        {
+          "name": "test_alternating_single_rw",
+          "description": "Alternate single write and single read for many cycles",
+          "type": "directed"
+        }
+      ]
+    },
+    {
+      "name": "state_transitions",
+      "description": "Verify FSM state transitions",
+      "priority": "P1",
+      "tests": [
+        {
+          "name": "test_empty_to_almost_empty",
+          "description": "Transition from EMPTY to ALMOST_EMPTY state, verify flags",
+          "type": "directed"
+        },
+        {
+          "name": "test_almost_empty_to_normal",
+          "description": "Transition from ALMOST_EMPTY to NORMAL state, verify flags",
+          "type": "directed"
+        },
+        {
+          "name": "test_normal_to_almost_full",
+          "description": "Transition from NORMAL to ALMOST_FULL state, verify flags",
+          "type": "directed"
+        },
+        {
+          "name": "test_almost_full_to_full",
+          "description": "Transition from ALMOST_FULL to FULL state, verify flags",
+          "type": "directed"
+        },
+        {
+          "name": "test_full_to_almost_full",
+          "description": "Transition from FULL to ALMOST_FULL state, verify flags",
+          "type": "directed"
+        },
+        {
+          "name": "test_rapid_state_transitions",
+          "description": "Rapidly cycle through all states, verify no glitches",
+          "type": "directed"
+        },
+        {
+          "name": "test_all_state_coverage",
+          "description": "Exercise all valid state transitions in FSM",
+          "type": "random"
+        }
+      ]
+    },
+    {
+      "name": "parameterization_tests",
+      "description": "Test various parameter configurations",
+      "priority": "P2",
+      "tests": [
+        {
+          "name": "test_minimum_depth",
+          "description": "Test with DEPTH=2, verify all functionality",
+          "type": "directed"
+        },
+        {
+          "name": "test_power_of_2_depths",
+          "description": "Test with DEPTH=4,8,16,32,64, verify correct operation",
+          "type": "directed"
+        },
+        {
+          "name": "test_non_power_of_2_depths",
+          "description": "Test with DEPTH=10,17,31, verify pointer wraparound",
+          "type": "directed"
+        },
+        {
+          "name": "test_large_depth",
+          "description": "Test with DEPTH=256, verify scalability",
+          "type": "directed"
+        },
+        {
+          "name": "test_minimum_data_width",
+          "description": "Test with DATA_WIDTH=1, verify functionality",
+          "type": "directed"
+        },
+        {
+          "name": "test_standard_data_widths",
+          "description": "Test with DATA_WIDTH=8,16,32,64, verify storage",
+          "type": "directed"
+        },
+        {
+          "name": "test_large_data_width",
+          "description": "Test with DATA_WIDTH=128,256, verify no width-related issues",
+          "type": "directed"
+        }
+      ]
+    },
+    {
+      "name": "stress_tests",
+      "description": "High-intensity random testing",
+      "priority": "P1",
+      "tests": [
+        {
+          "name": "test_random_operations_short",
+          "description": "1000 random operations with constrained stimulus",
+          "type": "random"
+        },
+        {
+          "name": "test_random_operations_long",
+          "description": "10000+ random operations, verify no failures",
+          "type": "random"
+        },
+        {
+          "name": "test_rapid_fill_empty_cycles",
+          "description": "Rapidly alternate between filling and emptying FIFO",
+          "type": "random"
+        },
+        {
+          "name": "test_random_simul_rw_heavy",
+          "description": "High percentage of simultaneous R/W operations",
+          "type": "random"
+        },
+        {
+          "name": "test_corner_case_stress",
+          "description": "Weighted random to hit corner cases frequently",
+          "type": "random"
+        }
+      ]
+    },
+    {
+      "name": "timing_tests",
+      "description": "Verify timing and synchronous behavior",
+      "priority": "P2",
+      "tests": [
+        {
+          "name": "test_output_synchronous",
+          "description": "Verify all outputs update on rising clock edge only",
+          "type": "directed"
+        },
+        {
+          "name": "test_flag_timing",
+          "description": "Verify flags update same cycle as count changes",
+          "type": "directed"
+        },
+        {
+          "name": "test_no_combinational_paths",
+          "description": "Verify no combinational paths from inputs to outputs",
+          "type": "directed"
+        },
+        {
+          "name": "test_setup_hold_margins",
+          "description": "Test with inputs changing near clock edge",
+          "type": "directed"
+        }
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "name": "assert_full_flag_correct",
+      "type": "safety",
+      "description": "Full flag asserted if and only if count equals DEPTH",
+      "sva_template": "property p_full_flag; @(posedge clk) disable iff (!rst_n) full == (count == DEPTH); endproperty"
+    },
+    {
+      "name": "assert_empty_flag_correct",
+      "type": "safety",
+      "description": "Empty flag asserted if and only if count equals 0",
+      "sva_template": "property p_empty_flag; @(posedge clk) disable iff (!rst_n) empty == (count == 0); endproperty"
+    },
+    {
+      "name": "assert_almost_full_correct",
+      "type": "safety",
+      "description": "Almost full flag asserted if and only if count equals DEPTH-1",
+      "sva_template": "property p_almost_full; @(posedge clk) disable iff (!rst_n) almost_full == (count == DEPTH-1); endproperty"
+    },
+    {
+      "name": "assert_almost_empty_correct",
+      "type": "safety",
+      "description": "Almost empty flag asserted if and only if count equals 1",
+      "sva_template": "property p_almost_empty; @(posedge clk) disable iff (!rst_n) almost_empty == (count == 1); endproperty"
+    },
+    {
+      "name": "assert_count_bounds",
+      "type": "safety",
+      "description": "Count never exceeds DEPTH or goes below 0",
+      "sva_template": "property p_count_bounds; @(posedge clk) disable iff (!rst_n) (count >= 0) && (count <= DEPTH); endproperty"
+    },
+    {
+      "name": "assert_count_transition",
+      "type": "safety",
+      "description": "Count changes by at most \u00b11 per cycle",
+      "sva_template": "property p_count_transition; @(posedge clk) disable iff (!rst_n) (count - $past(count)) inside {-1, 0, 1}; endproperty"
+    },
+    {
+      "name": "assert_mutual_exclusion",
+      "type": "safety",
+      "description": "Full and empty never asserted simultaneously",
+      "sva_template": "property p_mutual_exclusion; @(posedge clk) disable iff (!rst_n) !(full && empty); endproperty"
+    },
+    {
+      "name": "assert_no_write_when_full",
+      "type": "protocol",
+      "description": "Write pointer does not advance when full without simultaneous read",
+      "sva_template": "property p_no_write_full; @(posedge clk) disable iff (!rst_n) (full && wr_en && !rd_en) |=> (wr_ptr == $past(wr_ptr)); endproperty"
+    },
+    {
+      "name": "assert_no_read_when_empty",
+      "type": "protocol",
+      "description": "Read pointer does not advance when empty without simultaneous write",
+      "sva_template": "property p_no_read_empty; @(posedge clk) disable iff (!rst_n) (empty && rd_en && !wr_en) |=> (rd_ptr == $past(rd_ptr)); endproperty"
+    },
+    {
+      "name": "assert_count_increment_write",
+      "type": "protocol",
+      "description": "Count increments by 1 on write-only when not full",
+      "sva_template": "property p_count_inc; @(posedge clk) disable iff (!rst_n) (wr_en && !rd_en && !full) |=> (count == $past(count) + 1); endproperty"
+    },
+    {
+      "name": "assert_count_decrement_read",
+      "type": "protocol",
+      "description": "Count decrements by 1 on read-only when not empty",
+      "sva_template": "property p_count_dec; @(posedge clk) disable iff (!rst_n) (rd_en && !wr_en && !empty) |=> (count == $past(count) - 1); endproperty"
+    },
+    {
+      "name": "assert_count_stable_simul_rw",
+      "type": "protocol",
+      "description": "Count unchanged on simultaneous R/W in normal state",
+      "sva_template": "property p_count_stable; @(posedge clk) disable iff (!rst_n) (wr_en && rd_en && !empty && !full) |=> (count == $past(count)); endproperty"
+    },
+    {
+      "name": "assert_reset_clears_fifo",
+      "type": "safety",
+      "description": "Reset clears FIFO to empty state with count=0",
+      "sva_template": "property p_reset; @(posedge clk) !rst_n |=> (empty && !full && count == 0); endproperty"
+    },
+    {
+      "name": "assert_wr_ptr_wraparound",
+      "type": "protocol",
+      "description": "Write pointer wraps from DEPTH-1 to 0",
+      "sva_template": "property p_wr_wrap; @(posedge clk) disable iff (!rst_n) (wr_ptr == DEPTH-1 && wr_valid) |=> (wr_ptr == 0); endproperty"
+    },
+    {
+      "name": "assert_rd_ptr_wraparound",
+      "type": "protocol",
+      "description": "Read pointer wraps from DEPTH-1 to 0",
+      "sva_template": "property p_rd_wrap; @(posedge clk) disable iff (!rst_n) (rd_ptr == DEPTH-1 && rd_valid) |=> (rd_ptr == 0); endproperty"
+    },
+    {
+      "name": "assert_wr_ptr_bounds",
+      "type": "safety",
+      "description": "Write pointer stays within valid range [0, DEPTH-1]",
+      "sva_template": "property p_wr_bounds; @(posedge clk) disable iff (!rst_n) wr_ptr < DEPTH; endproperty"
+    },
+    {
+      "name": "assert_rd_ptr_bounds",
+      "type": "safety",
+      "description": "Read pointer stays within valid range [0, DEPTH-1]",
+      "sva_template": "property p_rd_bounds; @(posedge clk) disable iff (!rst_n) rd_ptr < DEPTH; endproperty"
+    },
+    {
+      "name": "assert_simul_rw_empty",
+      "type": "protocol",
+      "description": "Simultaneous R/W when empty performs write only",
+      "sva_template": "property p_simul_empty; @(posedge clk) disable iff (!rst_n) (empty && wr_en && rd_en) |=> (count == 1 && !empty); endproperty"
+    },
+    {
+      "name": "assert_simul_rw_full",
+      "type": "protocol",
+      "description": "Simultaneous R/W when full performs read only",
+      "sva_template": "property p_simul_full; @(posedge clk) disable iff (!rst_n) (full && wr_en && rd_en) |=> (count == DEPTH-1 && !full); endproperty"
+    },
+    {
+      "name": "assert_full_implies_not_empty",
+      "type": "safety",
+      "description": "If full is asserted, empty must be deasserted",
+      "sva_template": "property p_full_not_empty; @(posedge clk) disable iff (!rst_n) full |-> !empty; endproperty"
+    },
+    {
+      "name": "assert_empty_implies_not_full",
+      "type": "safety",
+      "description": "If empty is asserted, full must be deasserted",
+      "sva_template": "property p_empty_not_full; @(posedge clk) disable iff (!rst_n) empty |-> !full; endproperty"
+    },
+    {
+      "name": "assert_almost_full_implies_not_empty",
+      "type": "safety",
+      "description": "If almost_full is asserted, empty must be deasserted",
+      "sva_template": "property p_afull_not_empty; @(posedge clk) disable iff (!rst_n) almost_full |-> !empty; endproperty"
+    },
+    {
+      "name": "assert_almost_empty_implies_not_full",
+      "type": "safety",
+      "description": "If almost_empty is asserted, full must be deasserted",
+      "sva_template": "property p_aempty_not_full; @(posedge clk) disable iff (!rst_n) almost_empty |-> !full; endproperty"
+    },
+    {
+      "name": "assert_wr_valid_definition",
+      "type": "protocol",
+      "description": "Write valid signal correctly defined",
+      "sva_template": "property p_wr_valid; @(posedge clk) disable iff (!rst_n) wr_valid == ((wr_en && !full) || (wr_en && rd_en && empty)); endproperty"
+    },
+    {
+      "name": "assert_rd_valid_definition",
+      "type": "protocol",
+      "description": "Read valid signal correctly defined",
+      "sva_template": "property p_rd_valid; @(posedge clk) disable iff (!rst_n) rd_valid == ((rd_en && !empty) || (wr_en && rd_en && full)); endproperty"
+    },
+    {
+      "name": "assert_data_stable_when_empty",
+      "type": "liveness",
+      "description": "Read data remains stable when empty and no write occurs",
+      "sva_template": "property p_data_stable; @(posedge clk) disable iff (!rst_n) (empty && !wr_en) |=> (rd_data == $past(rd_data)); endproperty"
+    },
+    {
+      "name": "assert_flag_update_timing",
+      "type": "protocol",
+      "description": "Flags update synchronously with count changes",
+      "sva_template": "property p_flag_timing; @(posedge clk) disable iff (!rst_n) (count != $past(count)) |-> (full != $past(full)) || (empty != $past(empty)) || (almost_full != $past(almost_full)) || (almost_empty != $past(almost_empty)) || (count == $past(count) + 1) || (count == $past(count) - 1); endproperty"
+    },
+    {
+      "name": "assert_no_overflow",
+      "type": "safety",
+      "description": "Count never exceeds DEPTH (overflow protection)",
+      "sva_template": "property p_no_overflow; @(posedge clk) disable iff (!rst_n) count <= DEPTH; endproperty"
+    },
+    {
+      "name": "assert_no_underflow",
+      "type": "safety",
+      "description": "Count never goes below 0 (underflow protection)",
+      "sva_template": "property p_no_underflow; @(posedge clk) disable iff (!rst_n) count >= 0; endproperty"
+    },
+    {
+      "name": "assert_write_increments_ptr",
+      "type": "protocol",
+      "description": "Valid write increments write pointer",
+      "sva_template": "property p_wr_inc; @(posedge clk) disable iff (!rst_n) (wr_valid && wr_ptr != DEPTH-1) |=> (wr_ptr == $past(wr_ptr) + 1); endproperty"
+    },
+    {
+      "name": "assert_read_increments_ptr",
+      "type": "protocol",
+      "description": "Valid read increments read pointer",
+      "sva_template": "property p_rd_inc; @(posedge clk) disable iff (!rst_n) (rd_valid && rd_ptr != DEPTH-1) |=> (rd_ptr == $past(rd_ptr) + 1); endproperty"
+    }
+  ],
+  "covergroups": [
+    {
+      "name": "cg_count_values",
+      "description": "Cover all possible count values from 0 to DEPTH",
+      "coverpoints": [
+        "cp_count: count with bins for each value [0:DEPTH]"
+      ],
+      "crosses": []
+    },
+    {
+      "name": "cg_flag_states",
+      "description": "Cover all valid flag combinations",
+      "coverpoints": [
+        "cp_full: full flag {0, 1}",
+        "cp_empty: empty flag {0, 1}",
+        "cp_almost_full: almost_full flag {0, 1}",
+        "cp_almost_empty: almost_empty flag {0, 1}"
+      ],
+      "crosses": [
+        "cross_flags: cp_full X cp_empty X cp_almost_full X cp_almost_empty (with illegal_bins for full && empty)"
+      ]
+    },
+    {
+      "name": "cg_operations",
+      "description": "Cover all operation types in all states",
+      "coverpoints": [
+        "cp_operation: {WRITE_ONLY, READ_ONLY, SIMUL_RW, NO_OP}",
+        "cp_fifo_state: {EMPTY, ALMOST_EMPTY, NORMAL, ALMOST_FULL, FULL}"
+      ],
+      "crosses": [
+        "cross_op_state: cp_operation X cp_fifo_state"
+      ]
+    },
+    {
+      "name": "cg_state_transitions",
+      "description": "Cover all valid FSM state transitions",
+      "coverpoints": [
+        "cp_state_from: {EMPTY, ALMOST_EMPTY, NORMAL, ALMOST_FULL, FULL}",
+        "cp_state_to: {EMPTY, ALMOST_EMPTY, NORMAL, ALMOST_FULL, FULL}"
+      ],
+      "crosses": [
+        "cross_transitions: cp_state_from X cp_state_to (with bins for valid transitions only)"
+      ]
+    },
+    {
+      "name": "cg_boundary_conditions",
+      "description": "Cover critical boundary transitions",
+      "coverpoints": [
+        "cp_boundaries: {COUNT_0_TO_1, COUNT_1_TO_0, COUNT_1_TO_2, COUNT_2_TO_1, COUNT_DEPTH_MINUS_2_TO_DEPTH_MINUS_1, COUNT_DEPTH_MINUS_1_TO_DEPTH_MINUS_2, COUNT_DEPTH_MINUS_1_TO_DEPTH, COUNT_DEPTH_TO_DEPTH_MINUS_1}"
+      ],
+      "crosses": []
+    },
+    {
+      "name": "cg_corner_cases",
+      "description": "Cover all identified corner cases",
+      "coverpoints": [
+        "cp_corner: {WRITE_WHEN_FULL, READ_WHEN_EMPTY, SIMUL_RW_FULL, SIMUL_RW_EMPTY, WR_PTR_WRAP, RD_PTR_WRAP, RESET_DURING_WRITE, RESET_DURING_READ, BACK_TO_BACK_WR, BACK_TO_BACK_RD, SUSTAINED_FULL, SUSTAINED_EMPTY}"
+      ],
+      "crosses": []
+    },
+    {
+      "name": "cg_data_patterns",
+      "description": "Cover various data patterns written to FIFO",
+      "coverpoints": [
+        "cp_data_pattern: {ALL_ZEROS, ALL_ONES, ALTERNATING_01, ALTERNATING_10, WALKING_ONES, WALKING_ZEROS, RANDOM}"
+      ],
+      "crosses": []
+    },
+    {
+      "name": "cg_pointer_values",
+      "description": "Cover all pointer values and relationships",
+      "coverpoints": [
+        "cp_wr_ptr: wr_ptr with bins for each value [0:DEPTH-1]",
+        "cp_rd_ptr: rd_ptr with bins for each value [0:DEPTH-1]",
+        "cp_ptr_relation: {PTR_EQUAL, WR_AHEAD, RD_AHEAD}"
+      ],
+      "crosses": [
+        "cross_ptrs: cp_wr_ptr X cp_rd_ptr"
+      ]
+    },
+    {
+      "name": "cg_count_changes",
+      "description": "Cover all types of count changes",
+      "coverpoints": [
+        "cp_count_delta: {INCREMENT, DECREMENT, NO_CHANGE}",
+        "cp_count_before: count value before operation",
+        "cp_count_after: count value after operation"
+      ],
+      "crosses": [
+        "cross_count_change: cp_count_delta X cp_count_before"
+      ]
+    },
+    {
+      "name": "cg_reset_scenarios",
+      "description": "Cover reset in various conditions",
+      "coverpoints": [
+        "cp_reset_state: {RESET_WHEN_EMPTY, RESET_WHEN_FULL, RESET_WHEN_PARTIAL, RESET_DURING_WRITE, RESET_DURING_READ, RESET_DURING_SIMUL_RW}"
+      ],
+      "crosses": []
+    },
+    {
+      "name": "cg_simultaneous_rw",
+      "description": "Cover simultaneous R/W in all states",
+      "coverpoints": [
+        "cp_simul_state: {SIMUL_EMPTY, SIMUL_ALMOST_EMPTY, SIMUL_NORMAL, SIMUL_ALMOST_FULL, SIMUL_FULL}"
+      ],
+      "crosses": []
+    },
+    {
+      "name": "cg_back_to_back",
+      "description": "Cover back-to-back operation sequences",
+      "coverpoints": [
+        "cp_sequence: {CONSECUTIVE_WRITES, CONSECUTIVE_READS, ALTERNATING_WR_RD, ALTERNATING_RD_WR}"
+      ],
+      "crosses": []
+    },
+    {
+      "name": "cg_flag_transitions",
+      "description": "Cover flag assertion and deassertion events",
+      "coverpoints": [
+        "cp_full_trans: {FULL_ASSERT, FULL_DEASSERT}",
+        "cp_empty_trans: {EMPTY_ASSERT, EMPTY_DEASSERT}",
+        "cp_afull_trans: {AFULL_ASSERT, AFULL_DEASSERT}",
+        "cp_aempty_trans: {AEMPTY_ASSERT, AEMPTY_DEASSERT}"
+      ],
+      "crosses": []
+    }
+  ],
+  "stimulus_strategy": {
+    "constrained_random": [
+      "constraint_respect_full: When full=1, constrain wr_en to allow only simultaneous R/W or read-only",
+      "constraint_respect_empty: When empty=1, constrain rd_en to allow only simultaneous R/W or write-only",
+      "constraint_weighted_operations: Weight operations - write_only: 40%, read_only: 40%, simul_rw: 15%, no_op: 5%",
+      "constraint_data_patterns: Periodically inject specific data patterns (all 0s, all 1s, walking patterns)",
+      "constraint_burst_operations: Generate bursts of consecutive writes or reads",
+      "constraint_state_coverage: Weight stimulus to hit underrepresented states",
+      "constraint_corner_case_injection: Periodically force corner case scenarios",
+      "constraint_count_distribution: Ensure uniform distribution across all count values",
+      "constraint_pointer_wraparound: Force scenarios that cause pointer wraparound",
+      "constraint_flag_boundaries: Target operations near flag transition boundaries"
+    ],
+    "directed_scenarios": [
+      "scenario_fill_and_empty: Fill FIFO completely, then empty completely",
+      "scenario_single_entry: Write one entry, read one entry, repeat",
+      "scenario_ping_pong: Alternate between almost_empty and almost_full states",
+      "scenario_sustained_full: Hold FIFO full for extended period",
+      "scenario_sustained_empty: Hold FIFO empty for extended period",
+      "scenario_wraparound_stress: Force multiple complete wraparound cycles",
+      "scenario_reset_recovery: Apply reset at various fill levels and verify recovery",
+      "scenario_simultaneous_rw_sweep: Test simultaneous R/W at each count value",
+      "scenario_boundary_walk: Step through each boundary condition systematically",
+      "scenario_data_integrity_check: Write known sequence, read back, verify ordering",
+      "scenario_flag_coherency_check: Monitor flag consistency throughout operations",
+      "scenario_rapid_transitions: Rapidly cycle between empty and full states",
+      "scenario_back_to_back_max: Maximum length back-to-back write/read sequences",
+      "scenario_pointer_collision: Force pointer equality in both empty and full states",
+      "scenario_count_verification: Verify count accuracy through all transitions"
+    ]
+  },
+  "formal_verification_strategy": {
+    "properties_to_prove": [
+      "All safety assertions (flag correctness, count bounds, mutual exclusion)",
+      "Protocol assertions (pointer behavior, valid operations)",
+      "Data integrity properties (FIFO ordering, no corruption)"
+    ],
+    "assumptions": [
+      "Clock is free-running and glitch-free",
+      "Reset is properly synchronized",
+      "Input signals are stable at clock edge"
+    ],
+    "bounded_model_checking": {
+      "depth": "DEPTH * 3 cycles to cover multiple wraparounds",
+      "focus_areas": [
+        "Pointer wraparound correctness",
+        "Flag transition accuracy",
+        "Count increment/decrement logic"
+      ]
+    }
+  },
+  "reference_model": {
+    "type": "SystemVerilog queue-based model",
+    "description": "Maintain reference queue that mirrors FIFO contents",
+    "operations": [
+      "On write: push data to queue if not full",
+      "On read: pop data from queue if not empty",
+      "On simultaneous R/W: handle based on state",
+      "Compare DUT read data against queue front",
+      "Verify DUT count matches queue size",
+      "Verify DUT flags match queue state"
+    ]
+  },
+  "regression_strategy": {
+    "smoke_tests": [
+      "test_reset",
+      "test_basic_write_read",
+      "test_full_flag_assertion",
+      "test_empty_flag_assertion"
+    ],
+    "nightly_regression": [
+      "All P0 tests",
+      "Selected P1 tests",
+      "Random operations with multiple seeds"
+    ],
+    "weekly_regression": [
+      "All P0, P1, P2 tests",
+      "Extended random tests (10K+ operations)",
+      "All parameter configurations",
+      "Formal verification runs"
+    ]
+  },
+  "metrics_and_goals": {
+    "code_coverage": {
+      "line_coverage": 100,
+      "branch_coverage": 100,
+      "condition_coverage": 100,
+      "fsm_coverage": 100,
+      "toggle_coverage": 95
+    },
+    "functional_coverage": {
+      "count_values": 100,
+      "flag_combinations": 100,
+      "state_transitions": 100,
+      "corner_cases": 100,
+      "operation_types": 100
+    },
+    "assertion_coverage": {
+      "assertion_pass_rate": 100,
+      "assertion_exercise_rate": 100
+    },
+    "bug_detection_goals": {
+      "pointer_management_bugs": "Detect wraparound errors, off-by-one errors",
+      "flag_logic_bugs": "Detect incorrect flag assertions, timing issues",
+      "count_logic_bugs": "Detect count overflow/underflow, incorrect transitions",
+      "data_integrity_bugs": "Detect corruption, ordering violations",
+      "protocol_bugs": "Detect invalid operations, state machine errors"
+    }
+  }
+}

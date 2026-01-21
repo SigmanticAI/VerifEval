@@ -63,3 +63,4 @@ class FifoEnvironment:
         """Generate final report."""
         return self.scoreboard.report()
 
+

@@ -60,3 +60,4 @@ class FifoScoreboard:
         self.checks_passed = 0
         self.checks_failed = 0
 
+

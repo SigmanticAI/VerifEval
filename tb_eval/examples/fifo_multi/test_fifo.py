@@ -189,3 +189,4 @@ async def test_data_patterns(dut):
     assert passed, "Data pattern tests failed"
     cocotb.log.info("Data pattern test PASSED")
 
+

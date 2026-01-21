@@ -50,3 +50,4 @@ class FifoMonitor:
             "total_reads": len(self.read_transactions),
         }
 
+
