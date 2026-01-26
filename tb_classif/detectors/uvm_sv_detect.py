@@ -6,7 +6,7 @@ from typing import Optional
 
 from .base import BaseDetector
 from ..models import DetectionResult, TBType, Language
-
+import re
 
 class UVMSVDetector(BaseDetector):
     """Detects traditional SystemVerilog UVM testbenches"""
