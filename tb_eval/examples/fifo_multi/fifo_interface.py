@@ -45,3 +45,5 @@ class FifoInterface:
         self.wr_data.value = 0
 
 
+
+
