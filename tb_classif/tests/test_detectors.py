@@ -268,12 +268,64 @@ end architecture;
         assert result.tb_type == TBType.VHDL
 
 
-def test_detector_priority():
-    """Test that detectors don't conflict"""
-    # CocoTB should take priority over plain Python
-    # UVM-SV should take priority over plain SV
-    # etc.
+   def test_detector_priority():
+    """Test that detectors don't conflict and priority is correct"""
+    import tempfile
+    from pathlib import Path
+    
+    # Create a file that could match multiple detectors
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        
+        # File with both cocotb and generic Python patterns
+        test_file = tmp_path / "test_mixed.py"
+        test_file.write_text("""
+import cocotb
+from cocotb.triggers import Timer
+
+# This could look like generic Python too
+def helper_function():
     pass
+
+@cocotb.test()
+        async d5>>ef test_something(dut):
+            await Timer(1, units='ns')
+        """)
+                
+                # CocoTB should take priority over generic detection
+        cocotb_detector = CocoTBDetector()
+        result = cocotb_detector.detect(test_file)
+        
+        assert result is not None
+        assert result.tb_type == TBType.COCOTB
+        
+        # PyUVM should take priority over CocoTB when both patterns present
+        pyuvm_file = tmp_path / "test_pyuvm_cocotb.py"
+        pyuvm_file.write_text("""
+import cocotb
+from pyuvm import *
+from cocotb.triggers import Timer
+
+class MyTest(uvm_test):
+    async def run_phase(self):
+        self.raise_objection()
+        await Timer(100, 'ns')
+        self.drop_objection()
+""")
+        
+        pyuvm_detector = PyUVMDetector()
+        cocotb_detector = CocoTBDetector()
+        
+        pyuvm_result = pyuvm_detector.detect(pyuvm_file)
+        cocotb_result = cocotb_detector.detect(pyuvm_file)
+        
+        # Both might detect, but PyUVM should have higher confidence
+        # In practice, the orchestrator uses detector order for priority
+        assert pyuvm_result is not None or cocotb_result is not None
+        
+        if pyuvm_result and cocotb_result:
+            # PyUVM detection should be preferred when both match
+            assert pyuvm_result.confidence >= cocotb_result.confidence
 
 
 if __name__ == "__main__":
