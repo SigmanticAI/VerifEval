@@ -1,5 +1,5 @@
 """
-Tests for the end-to-end evaluation pipeline.
+Tests for the end-to-end evaluation pipeline (Questa version).
 """
 
 import pytest
@@ -19,23 +19,22 @@ class TestPipelineConfig:
         config = PipelineConfig()
         
         assert config.run_quality_gate == True
-        assert config.auto_translate_uvm == True
-        assert config.simulator == "verilator"
+        assert config.simulator == "questa"
         assert config.num_runs == 1
     
     def test_custom_config(self):
         """Test custom configuration."""
         config = PipelineConfig(
             run_quality_gate=False,
-            auto_translate_uvm=False,
             num_runs=3,
-            verbose=True
+            verbose=True,
+            license_file="1717@license.server.com"
         )
         
         assert config.run_quality_gate == False
-        assert config.auto_translate_uvm == False
         assert config.num_runs == 3
         assert config.verbose == True
+        assert config.license_file == "1717@license.server.com"
 
 
 class TestEvaluationResult:
@@ -140,54 +139,36 @@ class TestVerifEvalPipeline:
         return VerifEvalPipeline(PipelineConfig(verbose=False))
     
     @pytest.fixture
-    def sample_cocotb_project(self, tmp_path):
-        """Create a sample cocotb project."""
-        # Create test file
-        (tmp_path / "test_dut.py").write_text('''
-import cocotb
-from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge
-
-@cocotb.test()
-async def test_basic(dut):
-    cocotb.start_soon(Clock(dut.clk, 10, units='ns').start())
-    await RisingEdge(dut.clk)
-''')
-        
-        # Create simple DUT
-        (tmp_path / "dut.v").write_text('''
-module dut(
-    input clk,
-    input rst_n,
-    input [7:0] data_in,
-    output reg [7:0] data_out
-);
-    always @(posedge clk) begin
-        if (!rst_n)
-            data_out <= 8'b0;
-        else
-            data_out <= data_in;
-    end
-endmodule
-''')
-        
-        # Create Makefile
-        (tmp_path / "Makefile").write_text('''
-SIM ?= verilator
-TOPLEVEL = dut
-TOPLEVEL_LANG = verilog
-VERILOG_SOURCES = dut.v
-MODULE = test_dut
-include $(shell cocotb-config --makefiles)/Makefile.sim
-''')
-        
-        return tmp_path
-    
-    @pytest.fixture
     def sample_uvm_project(self, tmp_path):
         """Create a sample UVM project."""
         tb_dir = tmp_path / "tb"
         tb_dir.mkdir()
+        
+        (tb_dir / "tb_top.sv").write_text('''
+`timescale 1ns/1ps
+module tb_top;
+    import uvm_pkg::*;
+    `include "uvm_macros.svh"
+    
+    logic clk;
+    logic rst_n;
+    
+    initial begin
+        clk = 0;
+        forever #5 clk = ~clk;
+    end
+    
+    initial begin
+        rst_n = 0;
+        #100;
+        rst_n = 1;
+    end
+    
+    initial begin
+        run_test();
+    end
+endmodule
+''')
         
         (tb_dir / "test.sv").write_text('''
 class simple_test extends uvm_test;
@@ -199,15 +180,15 @@ class simple_test extends uvm_test;
 endclass
 ''')
         
-        (tb_dir / "driver.sv").write_text('''
-class simple_driver extends uvm_driver #(simple_seq_item);
-    `uvm_component_utils(simple_driver)
-    
-    function new(string name, uvm_component parent);
-        super.new(name, parent);
-    endfunction
-endclass
-''')
+        # Create verification plan
+        import json
+        with open(tmp_path / "verification_plan.json", 'w') as f:
+            json.dump({
+                "tests": [
+                    {"name": "base_test"},
+                    {"name": "random_test"}
+                ]
+            }, f)
         
         return tmp_path
     
@@ -247,8 +228,27 @@ class TestPipelineStages:
         """Test classification with empty project."""
         result = pipeline._run_classification(tmp_path)
         
-        # Should fail or succeed depending on implementation
+        # Should fail since no files found
         assert result.stage == EvaluationStage.CLASSIFY_ROUTE
+        assert result.success == False
+    
+    def test_classification_with_files(self, pipeline, tmp_path):
+        """Test classification with SV files."""
+        # Create a simple DUT file
+        (tmp_path / "dut.sv").write_text('''
+module dut(
+    input clk,
+    input rst_n,
+    output logic [7:0] data
+);
+endmodule
+''')
+        
+        result = pipeline._run_classification(tmp_path)
+        
+        assert result.stage == EvaluationStage.CLASSIFY_ROUTE
+        assert result.success == True
+        assert 'routing' in result.data
     
     def test_scoring_empty_stages(self, pipeline):
         """Test scoring with empty stages."""
@@ -265,8 +265,6 @@ class TestPipelineIntegration:
     def pipeline(self):
         return VerifEvalPipeline(PipelineConfig(
             run_quality_gate=False,
-            auto_translate_uvm=True,
-            use_llm_translation=False,  # Use templates
             verbose=False
         ))
     
@@ -278,6 +276,8 @@ class TestPipelineIntegration:
         
         # Should handle gracefully
         assert isinstance(result, EvaluationResult)
+        assert result.success == False
+        assert any("does not exist" in e for e in result.errors)
     
     def test_evaluate_empty_project(self, pipeline, tmp_path):
         """Test evaluation of empty project."""
@@ -361,4 +361,3 @@ class TestResultFinalization:
         
         assert "Error 1" in finalized.errors
         assert "Error 2" in finalized.errors
-

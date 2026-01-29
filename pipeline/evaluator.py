@@ -1,15 +1,13 @@
 """
-VerifEval End-to-End Pipeline.
+VerifEval End-to-End Pipeline (Questa Version).
 
-Complete evaluation pipeline implementing the HLD Guide workflow:
-1. Static Quality Gate (Verible)
+Complete evaluation pipeline using Siemens Questa:
+1. Quality Gate (syntax checking)
 2. Classify and Route
-3. Build & Instrument (Verilator)
-4. Execute Tests (cocotb)
-5. Coverage Analysis
+3. Build (vlog compilation)
+4. Execute Tests (vsim simulation)
+5. Coverage Analysis (vcover)
 6. Scoring & Export
-
-With UVM-SV to Python translation support for open-source evaluation.
 """
 
 import json
@@ -40,13 +38,11 @@ class PipelineConfig:
     run_quality_gate: bool = True
     fail_on_lint_errors: bool = False
     
-    # Translation
-    auto_translate_uvm: bool = True
-    use_llm_translation: bool = True
-    llm_provider: str = "anthropic"
+    # Questa configuration
+    simulator: str = "questa"
+    license_file: Optional[str] = None
     
     # Simulation
-    simulator: str = "verilator"
     num_runs: int = 1
     random_seed: Optional[int] = None
     timeout_seconds: int = 300
@@ -59,6 +55,11 @@ class PipelineConfig:
     output_dir: Optional[Path] = None
     keep_work_dir: bool = False
     verbose: bool = False
+    
+    # Legacy options (kept for compatibility but not used)
+    auto_translate_uvm: bool = False
+    use_llm_translation: bool = False
+    llm_provider: str = "anthropic"
 
 
 @dataclass
@@ -118,8 +119,7 @@ class VerifEvalPipeline:
     """
     End-to-end verification testbench evaluation pipeline.
     
-    Implements the complete HLD Guide workflow with support
-    for automatic UVM-SV to Python translation.
+    Uses Siemens Questa for UVM simulation and coverage.
     """
     
     def __init__(self, config: Optional[PipelineConfig] = None):
@@ -134,17 +134,25 @@ class VerifEvalPipeline:
     
     def _init_components(self):
         """Initialize pipeline components."""
-        # Quality gate
-        self._quality_gate = None
-        
-        # Classifier
-        self._classifier = None
-        
-        # Translator
-        self._translator = None
-        
-        # Simulator
         self._simulator = None
+        self._coverage_analyzer = None
+        
+        # Initialize Questa components if license available
+        try:
+            from questa.config import get_config, set_license
+            from questa.simulator import QuestaSimulator
+            from questa.coverage import QuestaCoverageAnalyzer
+            
+            # Set license if provided in config
+            if self.config.license_file:
+                set_license(self.config.license_file)
+            
+            questa_config = get_config()
+            self._simulator = QuestaSimulator(questa_config)
+            self._coverage_analyzer = QuestaCoverageAnalyzer(questa_config)
+            
+        except ImportError:
+            pass  # Will handle in evaluate()
     
     def evaluate(self, project_path: Path) -> EvaluationResult:
         """
@@ -165,13 +173,18 @@ class VerifEvalPipeline:
             timestamp=datetime.now().isoformat()
         )
         
+        # Check if project exists
+        if not project_path.exists():
+            result.errors.append(f"Project path does not exist: {project_path}")
+            return self._finalize_result(result, start_time)
+        
         # Set up output directory
         output_dir = self.config.output_dir or project_path / "eval_results"
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         
         try:
-            # Stage 1: Quality Gate
+            # Stage 1: Quality Gate (syntax check)
             if self.config.run_quality_gate:
                 stage_result = self._run_quality_gate(project_path)
                 result.stages['quality_gate'] = stage_result
@@ -189,23 +202,8 @@ class VerifEvalPipeline:
                 return self._finalize_result(result, start_time)
             
             routing = stage_result.data.get('routing', {})
-            tb_type = routing.get('tb_type', 'unknown')
             
-            # Stage 3: Translation (if UVM-SV)
-            if tb_type == 'uvm_sv' and self.config.auto_translate_uvm:
-                stage_result = self._run_translation(project_path, routing)
-                result.stages['translation'] = stage_result
-                
-                if stage_result.success:
-                    # Update to use translated files
-                    project_path = Path(stage_result.data.get('translated_dir', project_path))
-                    routing = stage_result.data.get('updated_routing', routing)
-                else:
-                    result.warnings.append("UVM translation failed - cannot proceed with open-source tools")
-                    result.errors.extend(stage_result.errors)
-                    return self._finalize_result(result, start_time)
-            
-            # Stage 4: Build
+            # Stage 3: Build (vlog compilation)
             stage_result = self._run_build(project_path, routing)
             result.stages['build'] = stage_result
             
@@ -213,17 +211,17 @@ class VerifEvalPipeline:
                 result.errors.extend(stage_result.errors)
                 return self._finalize_result(result, start_time)
             
-            # Stage 5: Execute Tests
+            # Stage 4: Execute Tests (vsim simulation)
             stage_result = self._run_tests(project_path, routing)
             result.stages['execute'] = stage_result
             result.warnings.extend(stage_result.warnings)
             
-            # Stage 6: Coverage Analysis
+            # Stage 5: Coverage Analysis (vcover)
             if self.config.enable_coverage:
                 stage_result = self._run_coverage_analysis(project_path, routing)
                 result.stages['coverage'] = stage_result
             
-            # Stage 7: Scoring
+            # Stage 6: Scoring
             stage_result = self._compute_scores(result.stages)
             result.stages['scoring'] = stage_result
             result.metrics = stage_result.data
@@ -243,13 +241,11 @@ class VerifEvalPipeline:
         return self._finalize_result(result, start_time, output_dir)
     
     def _run_quality_gate(self, project_path: Path) -> StageResult:
-        """Run the quality gate (Verible linting)."""
+        """Run the quality gate (basic syntax checking)."""
         start = time.time()
         result = StageResult(stage=EvaluationStage.QUALITY_GATE, success=True)
         
         try:
-            from tb_classif.quality_gate.verible_linter import VeribleLinter
-            
             # Find SV files
             sv_files = list(project_path.glob('**/*.sv')) + list(project_path.glob('**/*.v'))
             
@@ -258,26 +254,50 @@ class VerifEvalPipeline:
                 result.data['reason'] = "No SystemVerilog files found"
                 return result
             
-            linter = VeribleLinter(sv_files, project_path)
-            report = linter.run_checks()
-            
-            result.success = report.critical_errors == 0
-            result.data = {
-                'total_files': report.total_files,
-                'total_violations': report.total_violations,
-                'critical_errors': report.critical_errors,
-                'warnings': report.warnings,
-                'style_issues': report.style_issues
-            }
-            
-            if report.critical_errors > 0:
-                result.errors.append(f"{report.critical_errors} critical lint errors")
-            if report.warnings > 10:
-                result.warnings.append(f"{report.warnings} lint warnings")
+            # Basic syntax check using Questa vlog
+            if self._simulator:
+                from questa.config import get_config
+                import subprocess
                 
-        except ImportError:
-            result.warnings.append("Verible not available - skipping quality gate")
-            result.data['skipped'] = True
+                config = get_config()
+                errors = []
+                warnings = []
+                
+                for sv_file in sv_files[:10]:  # Limit to first 10 files
+                    try:
+                        proc = subprocess.run(
+                            [config.vlog_path, '-lint', '-sv', str(sv_file)],
+                            capture_output=True,
+                            text=True,
+                            timeout=30,
+                            env=config.get_env()
+                        )
+                        
+                        if '** Error' in proc.stderr:
+                            errors.extend([l for l in proc.stderr.split('\n') if '** Error' in l])
+                        if '** Warning' in proc.stderr:
+                            warnings.extend([l for l in proc.stderr.split('\n') if '** Warning' in l])
+                            
+                    except (subprocess.TimeoutExpired, FileNotFoundError):
+                        pass
+                
+                result.data = {
+                    'total_files': len(sv_files),
+                    'files_checked': min(len(sv_files), 10),
+                    'critical_errors': len(errors),
+                    'warnings': len(warnings),
+                }
+                
+                result.success = len(errors) == 0
+                
+                if errors:
+                    result.errors = errors[:5]
+                if warnings:
+                    result.warnings = warnings[:5]
+            else:
+                result.data['skipped'] = True
+                result.warnings.append("Questa not available - skipping quality gate")
+                
         except Exception as e:
             result.warnings.append(f"Quality gate error: {str(e)}")
             result.data['skipped'] = True
@@ -291,21 +311,56 @@ class VerifEvalPipeline:
         result = StageResult(stage=EvaluationStage.CLASSIFY_ROUTE, success=True)
         
         try:
-            from tb_classif.classify_route import ClassifierRouter
+            import re
             
-            router = ClassifierRouter(project_path)
-            routing = router.classify_and_route(run_quality_gate=False)
+            # Find all files
+            sv_files = list(project_path.glob('**/*.sv')) + list(project_path.glob('**/*.v'))
             
-            result.data['routing'] = routing.to_dict()
-            result.success = routing.is_valid() or routing.tb_type == 'uvm_sv'
+            # Classify by looking at file contents
+            dut_files = []
+            tb_files = []
+            assertion_files = []
             
-            if not result.success:
-                result.errors.extend(routing.errors)
-            result.warnings.extend(routing.warnings)
+            tb_type = 'unknown'
             
-        except ImportError as e:
-            result.errors.append(f"Classification module not available: {e}")
-            result.success = False
+            for f in sv_files:
+                try:
+                    content = f.read_text(errors='ignore')
+                    
+                    # Check for UVM
+                    if 'uvm_pkg' in content or 'extends uvm_' in content:
+                        tb_files.append(str(f.relative_to(project_path)))
+                        tb_type = 'uvm_sv'
+                    # Check for assertions
+                    elif 'assert property' in content or 'assert ' in content:
+                        assertion_files.append(str(f.relative_to(project_path)))
+                    # Check for testbench
+                    elif 'tb_' in f.name.lower() or 'test' in f.name.lower():
+                        tb_files.append(str(f.relative_to(project_path)))
+                    # Otherwise it's likely DUT
+                    else:
+                        dut_files.append(str(f.relative_to(project_path)))
+                        
+                except Exception:
+                    pass
+            
+            # If we have UVM files, assume UVM type
+            if tb_type == 'unknown' and tb_files:
+                tb_type = 'uvm_sv'
+            
+            result.data['routing'] = {
+                'tb_type': tb_type,
+                'dut_files': dut_files,
+                'tb_files': tb_files,
+                'assertion_files': assertion_files,
+                'chosen_simulator': 'questa',
+            }
+            
+            result.success = len(sv_files) > 0
+            
+            if not sv_files:
+                result.errors.append("No SystemVerilog files found")
+            
         except Exception as e:
             result.errors.append(f"Classification failed: {str(e)}")
             result.success = False
@@ -313,201 +368,163 @@ class VerifEvalPipeline:
         result.duration_ms = (time.time() - start) * 1000
         return result
     
-    def _run_translation(self, project_path: Path, routing: Dict) -> StageResult:
-        """Run UVM-SV to Python translation."""
-        start = time.time()
-        result = StageResult(stage=EvaluationStage.TRANSLATION, success=False)
-        
-        try:
-            from tb_classif.classify_route.uvm_integration import UVMTranslationIntegrator
-            from tb_classif.detectors.models import DetectionResult, TBType, Language
-            
-            integrator = UVMTranslationIntegrator(
-                auto_translate=True,
-                use_llm=self.config.use_llm_translation,
-                llm_provider=self.config.llm_provider
-            )
-            
-            # Create mock detection result
-            detection = DetectionResult(
-                tb_type=TBType.UVM_SV,
-                confidence=1.0,
-                files_detected=routing.get('tb_files', []),
-                detection_method="classification",
-                language=Language.SYSTEMVERILOG
-            )
-            
-            # Get file paths
-            dut_files = [project_path / f for f in routing.get('dut_files', [])]
-            tb_files = [project_path / f for f in routing.get('tb_files', [])]
-            
-            # Run translation
-            trans_result = integrator.check_and_translate(
-                detection, project_path, dut_files, tb_files
-            )
-            
-            result.success = trans_result['translation_success']
-            result.data = {
-                'translated_dir': trans_result['translated_dir'],
-                'translated_files': trans_result['translated_files'],
-                'new_tb_type': trans_result['new_tb_type'].value if hasattr(trans_result['new_tb_type'], 'value') else str(trans_result['new_tb_type']),
-            }
-            
-            # Update routing for translated files
-            if result.success:
-                result.data['updated_routing'] = {
-                    **routing,
-                    'tb_type': 'cocotb',
-                    'track': 'A',
-                    'chosen_simulator': 'verilator'
-                }
-            
-            result.errors.extend(trans_result['errors'])
-            result.warnings.extend(trans_result['warnings'])
-            
-        except ImportError as e:
-            # Try direct translation without integrator
-            try:
-                from uvm_translator.runner import UVMTranslationRunner
-                from uvm_translator.translator import TranslationMode
-                
-                runner = UVMTranslationRunner(
-                    mode=TranslationMode.COCOTB,
-                    use_llm=self.config.use_llm_translation,
-                    llm_provider=self.config.llm_provider,
-                    verbose=self.config.verbose
-                )
-                
-                output_dir = project_path / "translated_cocotb"
-                trans_results = runner.translate(
-                    input_path=project_path,
-                    output_dir=output_dir,
-                    validate=True,
-                    auto_fix=True
-                )
-                
-                result.success = trans_results['success']
-                result.data = {
-                    'translated_dir': str(output_dir),
-                    'translated_files': trans_results.get('files_generated', []),
-                    'new_tb_type': 'cocotb',
-                }
-                
-                if result.success:
-                    result.data['updated_routing'] = {
-                        **routing,
-                        'tb_type': 'cocotb',
-                        'track': 'A',
-                        'chosen_simulator': 'verilator'
-                    }
-                
-                result.errors.extend(trans_results.get('errors', []))
-                result.warnings.extend(trans_results.get('warnings', []))
-                
-            except Exception as e2:
-                result.errors.append(f"Translation failed: {str(e2)}")
-        except Exception as e:
-            result.errors.append(f"Translation failed: {str(e)}")
-        
-        result.duration_ms = (time.time() - start) * 1000
-        return result
-    
     def _run_build(self, project_path: Path, routing: Dict) -> StageResult:
-        """Run build and instrumentation."""
+        """Run build using Questa vlog."""
         start = time.time()
-        result = StageResult(stage=EvaluationStage.BUILD, success=True)
+        result = StageResult(stage=EvaluationStage.BUILD, success=False)
         
         try:
-            # Check for Makefile
-            makefile = project_path / "Makefile"
-            if not makefile.exists():
-                # Look in translated directory
-                translated_dir = project_path / "translated_cocotb"
-                if (translated_dir / "Makefile").exists():
-                    makefile = translated_dir / "Makefile"
-                else:
-                    result.warnings.append("No Makefile found - build may fail")
+            if not self._simulator:
+                result.errors.append("Questa simulator not available")
+                result.duration_ms = (time.time() - start) * 1000
+                return result
             
-            result.data['makefile_found'] = makefile.exists()
-            result.data['simulator'] = routing.get('chosen_simulator', self.config.simulator)
+            # Get all source files
+            dut_files = routing.get('dut_files', [])
+            tb_files = routing.get('tb_files', [])
+            all_files = [project_path / f for f in dut_files + tb_files]
             
-            # For now, just verify the build setup exists
-            # Actual build happens during test execution
+            if not all_files:
+                # Fallback: find all SV files
+                all_files = list(project_path.glob('**/*.sv')) + list(project_path.glob('**/*.v'))
+            
+            if not all_files:
+                result.errors.append("No source files found")
+                result.duration_ms = (time.time() - start) * 1000
+                return result
+            
+            # Create library and compile
+            work_dir = project_path / "work"
+            if self._simulator.create_library(work_dir):
+                success, errors, warnings = self._simulator.compile(
+                    source_files=all_files,
+                    work_dir=work_dir,
+                    enable_coverage=self.config.enable_coverage
+                )
+                
+                result.success = success
+                result.errors = errors[:5] if errors else []
+                result.warnings = warnings[:5] if warnings else []
+                result.data = {
+                    'files_compiled': len(all_files),
+                    'work_dir': str(work_dir),
+                }
+            else:
+                result.errors.append("Failed to create work library")
             
         except Exception as e:
-            result.errors.append(f"Build setup failed: {str(e)}")
-            result.success = False
+            result.errors.append(f"Build failed: {str(e)}")
         
         result.duration_ms = (time.time() - start) * 1000
         return result
     
     def _run_tests(self, project_path: Path, routing: Dict) -> StageResult:
-        """Execute the tests."""
+        """Execute tests using Questa vsim."""
         start = time.time()
-        result = StageResult(stage=EvaluationStage.EXECUTE, success=True)
+        result = StageResult(stage=EvaluationStage.EXECUTE, success=False)
         
         try:
-            from tb_eval.runner import TBEvalRunner
-            from tb_eval.config import EvalConfig
+            if not self._simulator:
+                result.errors.append("Questa simulator not available")
+                result.duration_ms = (time.time() - start) * 1000
+                return result
             
-            config = EvalConfig(
-                verbose=self.config.verbose,
-                keep_work_dir=self.config.keep_work_dir
+            work_dir = project_path / "work"
+            
+            # Find top module (typically tb_top or similar)
+            top_module = None
+            tb_files = routing.get('tb_files', [])
+            
+            for f in tb_files:
+                path = project_path / f
+                if path.exists():
+                    import re
+                    content = path.read_text(errors='ignore')
+                    match = re.search(r'module\s+(\w+)', content)
+                    if match:
+                        name = match.group(1)
+                        if 'tb_top' in name.lower() or 'top' in name.lower():
+                            top_module = name
+                            break
+            
+            if not top_module:
+                top_module = "tb_top"  # Default
+            
+            # Get UVM tests from verification plan if available
+            uvm_tests = ['base_test']
+            verif_plan = project_path / "verification_plan.json"
+            if verif_plan.exists():
+                try:
+                    with open(verif_plan) as f:
+                        plan = json.load(f)
+                        if 'tests' in plan:
+                            uvm_tests = [t.get('name', 'base_test') for t in plan['tests'][:3]]
+                except Exception:
+                    pass
+            
+            # Run simulation
+            coverage_db = project_path / "coverage.ucdb"
+            
+            sim_result = self._simulator.simulate(
+                top_module=top_module,
+                work_dir=work_dir,
+                uvm_test=uvm_tests[0],
+                coverage_db=coverage_db,
+                seed=self.config.random_seed
             )
             
-            runner = TBEvalRunner(config=config)
+            result.success = sim_result.simulation_success
+            result.data = {
+                'build_success_rate': 100.0 if sim_result.compile_success else 0.0,
+                'sim_success_rate': 100.0 if sim_result.simulation_success else 0.0,
+                'test_passed': sim_result.test_passed,
+                'avg_coverage': sim_result.coverage_percent,
+                'uvm_errors': sim_result.test_errors,
+                'uvm_warnings': sim_result.test_warnings,
+            }
             
-            # Determine which directory to evaluate
-            eval_dir = project_path
-            if (project_path / "translated_cocotb").exists():
-                eval_dir = project_path / "translated_cocotb"
+            result.errors = sim_result.simulation_errors[:5]
+            result.warnings = sim_result.simulation_warnings[:5]
             
-            # Run evaluation
-            try:
-                eval_results = runner.evaluate(eval_dir, num_runs=self.config.num_runs)
-                
-                result.data = {
-                    'build_success_rate': eval_results.build_success_rate,
-                    'sim_success_rate': eval_results.sim_success_rate,
-                    'avg_coverage': eval_results.avg_coverage,
-                    'num_runs': eval_results.num_runs
-                }
-                
-                result.success = eval_results.build_success_rate > 0
-                
-            except ValueError as ve:
-                # Missing files
-                result.warnings.append(str(ve))
-                result.data['skipped'] = True
-            
-        except ImportError:
-            result.warnings.append("tb_eval not available - skipping test execution")
-            result.data['skipped'] = True
         except Exception as e:
             result.errors.append(f"Test execution failed: {str(e)}")
-            result.success = False
         
         result.duration_ms = (time.time() - start) * 1000
         return result
     
     def _run_coverage_analysis(self, project_path: Path, routing: Dict) -> StageResult:
-        """Run coverage analysis."""
+        """Run coverage analysis using Questa vcover."""
         start = time.time()
         result = StageResult(stage=EvaluationStage.COVERAGE, success=True)
         
         try:
-            # Look for coverage data
-            coverage_files = list(project_path.glob('**/coverage.dat'))
-            
-            if not coverage_files:
+            if not self._coverage_analyzer:
                 result.data['skipped'] = True
-                result.warnings.append("No coverage data found")
+                result.warnings.append("Coverage analyzer not available")
+                result.duration_ms = (time.time() - start) * 1000
                 return result
             
+            # Look for UCDB files
+            ucdb_files = list(project_path.glob('**/*.ucdb'))
+            
+            if not ucdb_files:
+                result.data['skipped'] = True
+                result.warnings.append("No coverage data found")
+                result.duration_ms = (time.time() - start) * 1000
+                return result
+            
+            # Analyze coverage
+            cov_result = self._coverage_analyzer.analyze(ucdb_files[0])
+            
             result.data = {
-                'coverage_files_found': len(coverage_files),
-                'coverage_types': self.config.coverage_types
+                'line_coverage': cov_result.line_coverage,
+                'branch_coverage': cov_result.branch_coverage,
+                'toggle_coverage': cov_result.toggle_coverage,
+                'functional_coverage': cov_result.functional_coverage,
+                'total_coverage': cov_result.total_coverage,
             }
+            
+            result.errors.extend(cov_result.errors)
             
         except Exception as e:
             result.errors.append(f"Coverage analysis failed: {str(e)}")
@@ -543,6 +560,12 @@ class VerifEvalPipeline:
                 errors = qg_data.get('critical_errors', 0)
                 warnings = qg_data.get('warnings', 0)
                 scores['lint_score'] = max(0, 100 - errors * 10 - warnings)
+        
+        # Coverage from coverage stage
+        if 'coverage' in stages:
+            cov_data = stages['coverage'].data
+            if not cov_data.get('skipped'):
+                scores['structural_coverage'] = cov_data.get('total_coverage', 0.0)
         
         # Overall score (weighted average)
         weights = {
@@ -590,7 +613,7 @@ def main():
     import sys
     
     parser = argparse.ArgumentParser(
-        description="VerifEval Pipeline - End-to-end testbench evaluation",
+        description="VerifEval Pipeline - End-to-end testbench evaluation (Questa)",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
@@ -598,12 +621,8 @@ def main():
                        help='Path to verification project')
     parser.add_argument('--output', '-o', type=Path,
                        help='Output directory for results')
-    parser.add_argument('--no-translate', action='store_true',
-                       help='Disable automatic UVM translation')
-    parser.add_argument('--no-llm', action='store_true',
-                       help='Use templates only for translation')
-    parser.add_argument('--provider', choices=['anthropic', 'openai'],
-                       default='anthropic', help='LLM provider')
+    parser.add_argument('--license', type=str,
+                       help='Questa license server (port@server)')
     parser.add_argument('--runs', type=int, default=1,
                        help='Number of simulation runs')
     parser.add_argument('--verbose', '-v', action='store_true',
@@ -618,9 +637,7 @@ def main():
         sys.exit(1)
     
     config = PipelineConfig(
-        auto_translate_uvm=not args.no_translate,
-        use_llm_translation=not args.no_llm,
-        llm_provider=args.provider,
+        license_file=args.license,
         num_runs=args.runs,
         output_dir=args.output,
         verbose=args.verbose
@@ -640,7 +657,7 @@ def main():
 def _print_result(result: EvaluationResult):
     """Print evaluation result in human-readable format."""
     print("\n" + "=" * 70)
-    print("VERIFEVAL PIPELINE RESULTS")
+    print("VERIFEVAL PIPELINE RESULTS (Questa)")
     print("=" * 70)
     
     print(f"\nProject: {result.project_name}")
@@ -675,4 +692,3 @@ def _print_result(result: EvaluationResult):
 
 if __name__ == '__main__':
     main()
-

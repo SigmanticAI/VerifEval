@@ -1,28 +1,34 @@
-# VerifEval Dependencies
+# VerifEval Dependencies (Questa Version)
+#
+# This version uses Siemens Questa for verification tasks.
+# Open-source dependencies (cocotb, verilator, yosys) have been removed.
+#
+# System Requirements:
+# - Siemens Questa (QuestaSim or Questa Prime)
+# - Valid Questa license configured via QUESTA_LICENSE environment variable
+#
+# Installation:
+#   pip install -r requirements.txt
 
 # Core
-python-Levenshtein>=0.21.0  # For fuzzy string matching
+python-Levenshtein>=0.21.0  # For fuzzy string matching in spec evaluation
 rapidfuzz>=3.0.0            # Fast fuzzy matching alternative
 
 # JSON handling
-jsonschema>=4.0.0
+jsonschema>=4.0.0           # JSON schema validation
 
 # CLI and utilities
-click>=8.0.0
+click>=8.0.0                # CLI framework
 rich>=13.0.0                # Pretty terminal output
 
 # Testing
-pytest>=7.0.0
+pytest>=7.0.0               # Test framework
 
-# TB-Eval (VerifLLMBench methodology)
-cocotb>=2.0.0               # Python-based verification framework
-cocotb-test>=0.2.0          # cocotb test runner
-
-# LLM support for TB-Eval
+# LLM support (optional, for LLM-based evaluations)
 anthropic>=0.70.0           # Anthropic Claude API
 openai>=1.0.0               # OpenAI GPT API
 
-# Optional: For PDF generation
-# pandoc (system package)
-# verilator (system package) - required for tb_eval
-
+# Note: The following open-source tools are NO LONGER required:
+# - cocotb (replaced by Questa UVM simulation)
+# - verilator (replaced by Questa)
+# - yosys (replaced by Questa Formal)
