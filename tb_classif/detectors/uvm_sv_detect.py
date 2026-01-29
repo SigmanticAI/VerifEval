@@ -60,7 +60,9 @@ class UVMSVDetector(BaseDetector):
                     "has_uvm_import": has_uvm_import,
                     "has_uvm_macros": has_uvm_include,
                     "requires_commercial_sim": True,
-                    "open_source_alternative": "pyuvm"
+                    "preferred_simulator": "questa", 
+                    "open_source_alternative": "pyuvm",
+                    "questa_compatible": True  
                 }
             )
         
