@@ -55,6 +55,10 @@ class SimulatorSelector:
     
     def _get_default_simulator(self, tb_type: TBType, language: Language) -> Simulator:
         """Get default simulator for TB type and language"""
+
+        # ← NEW: UVM-SV defaults to Questa
+        if tb_type == TBType.UVM_SV:
+            return Simulator.QUESTA
         
         # Python-based testbenches
         if tb_type in [TBType.COCOTB, TBType.PYUVM]:
@@ -84,6 +88,10 @@ class SimulatorSelector:
     
     def _get_fallback_simulators(self, tb_type: TBType, language: Language) -> List[Simulator]:
         """Get list of fallback simulators in priority order"""
+
+        # ← NEW: UVM-SV fallbacks
+        if tb_type == TBType.UVM_SV:
+            return [Simulator.QUESTA]  # Only Questa for UVM
         
         # Python testbenches can use either Verilator or Icarus
         if tb_type in [TBType.COCOTB, TBType.PYUVM]:
@@ -127,12 +135,16 @@ class SimulatorSelector:
         # Special case
         if sim == Simulator.COMMERCIAL_REQUIRED:
             return False
+        # ← Questa Edit availability Check
+        if sim == Simulator.QUESTA:
+            return self._check_questa_available()
         
         # Map simulator to command
         command_map = {
             Simulator.VERILATOR: 'verilator',
             Simulator.ICARUS: 'iverilog',
             Simulator.GHDL: 'ghdl'
+            Simulator.QUESTA: 'vsim',  # ← NEW
         }
         
         cmd = command_map.get(sim)
@@ -153,6 +165,33 @@ class SimulatorSelector:
         # Cache result
         self._availability_cache[sim_name] = available
         return available
+        
+    def _check_questa_available(self) -> bool:
+        """Check if Questa is available and licensed"""
+        try:
+            # Check if vsim exists
+            result = subprocess.run(
+                ['vsim', '-version'],
+                capture_output=True,
+                timeout=5,
+                env={**os.environ}  # Use environment (includes LM_LICENSE_FILE)
+            )
+            
+            if result.returncode != 0:
+                return False
+            
+            # Check for license (optional - might timeout)
+            # Could check for specific version features
+            output = result.stdout.decode('utf-8', errors='ignore')
+            
+            # Questa/ModelSim version check
+            if 'Questa' in output or 'ModelSim' in output:
+                return True
+            
+            return False
+        
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return False
     
     def get_available_simulators(self) -> List[Simulator]:
         """Get list of all available simulators"""
@@ -188,6 +227,17 @@ class SimulatorSelector:
                 "speed": "Medium",
                 "coverage": "Yes (with --coverage)",
                 "install": "apt-get install ghdl or build from source"
+            },
+            # ← NEW: Questa info
+            Simulator.QUESTA: {
+                "name": "Questa Advanced Simulator",
+                "languages": "Full SystemVerilog, VHDL, UVM",
+                "type": "Event-driven",
+                "speed": "Fast",
+                "coverage": "Yes (comprehensive)",
+                "uvm_support": "Yes (native)",
+                "license": "Commercial (Siemens EDA)",
+                "install": "Requires commercial license"
             },
             Simulator.COMMERCIAL_REQUIRED: {
                 "name": "Commercial Simulator Required",
