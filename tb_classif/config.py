@@ -85,7 +85,10 @@ class ConfigManager:
             "fail_on_style_issues": False,
             "verible_rules_file": None,
             "verible_waiver_file": None,
-            "preferred_simulator": "verilator",
+            "questa_path": None,  # Auto-detect from PATH or specify explicit path
+            "questa_license_server": None,  # e.g., "1234@license-server.company.com"
+            "questa_args": [],  # Additional arguments to vsim
+            "preferred_simulator": "questa",  # updated from verilator
             "enable_uvm_detection": True,
             "dut_directories": ["rtl", "src", "design"],
             "tb_directories": ["tb", "testbench", "test"]
