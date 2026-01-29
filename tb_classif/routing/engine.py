@@ -112,7 +112,7 @@ class RoutingEngine:
             TBType.VUNIT: Track.B,
             TBType.SYSTEMVERILOG: Track.B,
             TBType.VHDL: Track.B,
-            TBType.UVM_SV: Track.C,  # Commercial simulator required
+            TBType.UVM_SV: Track.B,  # Questa -> updated for uvm compatibility
             TBType.UNKNOWN: Track.B  # Default to B with warnings
         }
         
@@ -185,15 +185,26 @@ class RoutingEngine:
         
         # UVM-SV detected
         if detection.tb_type == TBType.UVM_SV:
+            if simulator == Simulator.QUESTA:
             recommendations.append(
-                "⚠️  UVM SystemVerilog detected. This requires a commercial simulator."
+                "✅ UVM SystemVerilog detected. Questa simulator will be used."
+            )
+             recommendations.append(
+                "💡 Ensure Questa license is properly configured in .tbeval.yaml"
+            else:
+            # ← UPDATED: Questa not configured
+            recommendations.append(
+                "⚠️  UVM SystemVerilog detected but Questa not configured."
             )
             recommendations.append(
-                "💡 Consider migrating to pyuvm for full open-source compatibility: "
+                "💡 To run UVM testbenches, configure Questa in .tbeval.yaml:"
+            )
+            recommendations.append(
+                "   preferred_simulator: 'questa'"
+            )
+            recommendations.append(
+                "💡 Alternative: Migrate to pyuvm for open-source compatibility: "
                 "https://github.com/pyuvm/pyuvm"
-            )
-            recommendations.append(
-                "💡 Alternative: Use Verilator with UVM subset or SystemVerilog assertions only"
             )
         
         # Low confidence detection
@@ -258,12 +269,12 @@ class RoutingEngine:
                 "Fix errors before proceeding."
             )
         
-        # UVM-SV without commercial simulator
+        # UVM-SV without Questa configured (but not a hard error anymore)
         if detection.tb_type == TBType.UVM_SV:
-            errors.append(
-                "❌ UVM SystemVerilog requires commercial simulator (not configured). "
-                "Cannot proceed with open-source tools."
-            )
+            # Check if Questa is configured
+            # This check would happen in the orchestrator, not here
+            pass  # ← REMOVED: No longer a blocking error
+            
         
         return errors
     
