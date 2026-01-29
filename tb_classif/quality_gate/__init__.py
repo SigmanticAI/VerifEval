@@ -7,6 +7,7 @@ Static analysis and linting for HDL files.
 Supported Tools:
 - Verible: SystemVerilog/Verilog linting and syntax checking
 - GHDL: VHDL syntax checking
+- Questa: Simualtion and coverage metrics
 
 The quality gate can operate in three modes:
 - blocking: Fails pipeline on critical errors
@@ -34,4 +35,5 @@ __all__ = [
     "BaseQualityGate",
     "VeribleLinter",
     "GHDLChecker",
+    "QuestaChecker",
 ]
