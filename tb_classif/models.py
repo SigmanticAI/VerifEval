@@ -30,6 +30,7 @@ class Simulator(Enum):
     VERILATOR = "verilator"
     ICARUS = "icarus"
     GHDL = "ghdl"
+    QUESTA = "questa"
     COMMERCIAL_REQUIRED = "commercial_required"
     AUTO = "auto"
 
@@ -176,7 +177,11 @@ class ProjectConfig:
     # Detection preferences
     preferred_simulator: Optional[str] = None
     enable_uvm_detection: bool = True
-    
+
+    #Questa-specific settings 
+    questa_path: Optional[str] = None           # ← NEW: Path to Questa installation
+    questa_license_server: Optional[str] = None # ← NEW: License server (if needed)
+    questa_args: List[str] = field(default_factory=list) # ← NEW: Extra vsim args
     # File patterns
     dut_directories: List[str] = field(default_factory=lambda: ["rtl", "src", "design", "hdl"])
     tb_directories: List[str] = field(default_factory=lambda: ["tb", "testbench", "test", "tests", "sim"])
