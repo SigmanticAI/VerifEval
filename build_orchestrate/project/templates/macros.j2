@@ -1,0 +1,60 @@
+{# 
+   Shared macros for VUnit templates
+   
+   Usage in other templates:
+   {% import 'macros.j2' as macros %}
+   {{ macros.file_list(files) }}
+#}
+
+{# Generate Python list from file list #}
+{% macro file_list(files, indent=4) %}
+[
+{% for file in files %}
+{{ ' ' * indent }}"{{ file }}",
+{% endfor %}
+{{ ' ' * (indent - 4) }}]
+{% endmacro %}
+
+{# Generate compile options dict #}
+{% macro compile_options_dict(options) %}
+{
+{% for key, values in options.items() %}
+    "{{ key }}": {{ values }},
+{% endfor %}
+}
+{% endmacro %}
+
+{# Add source files loop #}
+{% macro add_source_files(lib_var, files_var, root_var='ROOT') %}
+for src_file in {{ files_var }}:
+    file_path = {{ root_var }} / src_file
+    if file_path.exists():
+        {{ lib_var }}.add_source_file(str(file_path))
+    else:
+        print(f"Warning: File not found: {file_path}")
+{% endmacro %}
+
+{# Generate UVM plusargs #}
+{% macro uvm_plusargs(test_name, verbosity='UVM_MEDIUM', timeout=None) %}
+[
+    f"+UVM_TESTNAME={{ test_name }}",
+    "+UVM_VERBOSITY={{ verbosity }}",
+    {% if timeout %}
+    "+UVM_TIMEOUT={{ timeout }}",
+    {% endif %}
+    "+UVM_NO_RELNOTES",
+]
+{% endmacro %}
+
+{# Coverage enable block #}
+{% macro coverage_block(enabled, simulator) %}
+{% if enabled %}
+{% if simulator in ['questa', 'modelsim'] %}
+# Coverage enabled
+vu.set_sim_option("modelsim.vsim_flags.append", ["-coverage"])
+{% elif simulator == 'ghdl' %}
+# GHDL coverage (gcov-based)
+vu.set_compile_option("ghdl.a_flags.append", ["-Wc,-fprofile-arcs", "-Wc,-ftest-coverage"])
+{% endif %}
+{% endif %}
+{% endmacro %}
