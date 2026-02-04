@@ -28,6 +28,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple, Callable
+from .tracks import get_track_handler, TrackBuildResult
 
 from .models import (
     BuildStatus,
@@ -77,6 +78,7 @@ class OrchestratorPhase(Enum):
     SIMULATOR_CONFIG = "simulator_config"
     COMPILATION = "compilation"
     TEST_DISCOVERY = "test_discovery"
+    TRACK_BUILD = "track_build"
     FINALIZE = "finalize"
     COMPLETE = "complete"
     FAILED = "failed"
@@ -114,6 +116,8 @@ class OrchestratorState:
     test_discovery: Optional[TestDiscoveryResult] = None
     
     # Error tracking
+    track_handler: Optional[Any] = None  # BaseTrack instance
+    track_result: Optional[TrackBuildResult] = None
     all_errors: List[str] = field(default_factory=list)
     all_warnings: List[str] = field(default_factory=list)
     
@@ -249,20 +253,11 @@ class VUnitOrchestrator:
                 OrchestratorPhase.SIMULATOR_CONFIG,
                 self._phase_simulator_config
             )
+
+            #Phase 4 Track build
+            self._run_phase(OrchestratorPhase.TRACK_BUILD, self._phase_track_build)
             
-            # Phase 4: Compilation
-            self._run_phase(
-                OrchestratorPhase.COMPILATION,
-                self._phase_compilation
-            )
-            
-            # Phase 5: Test Discovery
-            self._run_phase(
-                OrchestratorPhase.TEST_DISCOVERY,
-                self._phase_test_discovery
-            )
-            
-            # Phase 6: Finalize
+            # Phase 5: Finalize
             self._run_phase(
                 OrchestratorPhase.FINALIZE,
                 self._phase_finalize
@@ -710,6 +705,80 @@ class VUnitOrchestrator:
         self._progress(result.message)
         
         return result
+    # Add new method after _phase_test_discovery (around line 450):
+
+    def _phase_track_build(self) -> PhaseResult:
+        """
+        Phase: Track-specific build
+        
+        - Initialize track handler (A or B)
+        - Run track-specific compilation
+        - Track-specific test discovery
+        - Prepare execution environment
+        """
+        result = PhaseResult(phase=OrchestratorPhase.TRACK_BUILD, success=True)
+        
+        self._progress("Running track-specific build...")
+        
+        try:
+            # Get track handler based on route info
+            self.state.track_handler = get_track_handler(
+                route_info=self.state.route_info,
+                build_config=self.state.build_config,
+                submission_dir=self.submission_dir,
+            )
+            
+            track_name = self.state.track_handler.get_track_name()
+            self._progress(f"Using {track_name}")
+            
+            # Validate prerequisites
+            prereq_errors = self.state.track_handler.validate_prerequisites()
+            if prereq_errors:
+                for err in prereq_errors:
+                    if self.state.build_config.failure_mode == FailureMode.BLOCKING:
+                        result.errors.append(err)
+                    else:
+                        result.warnings.append(err)
+                
+                if result.errors:
+                    result.success = False
+                    return result
+            
+            # Run track build pipeline
+            track_result = self.state.track_handler.build()
+            self.state.track_result = track_result
+            
+            if not track_result.success:
+                result.success = False
+                result.errors.extend(track_result.errors)
+            
+            result.warnings.extend(track_result.warnings)
+            
+            # Store results
+            result.data = {
+                "track": track_name,
+                "compilation_success": track_result.compilation.is_success() if track_result.compilation else False,
+                "tests_found": track_result.tests_discovered.total_count if track_result.tests_discovered else 0,
+                "execution_command": track_result.execution_command,
+            }
+            
+            # Use track's test discovery result
+            if track_result.tests_discovered:
+                self.state.test_discovery = track_result.tests_discovered
+            
+            # Use track's compilation result
+            if track_result.compilation:
+                self.state.compilation_result = track_result.compilation
+            
+            result.message = f"{track_name}: {result.data.get('tests_found', 0)} tests ready"
+            
+        except Exception as e:
+            result.success = False
+            result.errors.append(f"Track build failed: {str(e)}")
+        
+        self._progress(result.message if result.success else "Track build failed")
+        
+        return result
     
     def _phase_finalize(self) -> PhaseResult:
         """
@@ -975,6 +1044,11 @@ class VUnitOrchestrator:
             errors=self.state.all_errors,
             warnings=self.state.all_warnings,
         )
+
+        if self.state.track_result:
+            manifest.execution_command = self.state.track_result.execution_command
+            manifest.execution_env = self.state.track_result.execution_env
+            manifest.execution_cwd = self.state.track_result.execution_cwd
         
         # Save manifest
         manifest_path = self.output_dir / "build_manifest.json"
