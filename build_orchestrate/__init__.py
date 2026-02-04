@@ -113,6 +113,14 @@ __all__ = [
     "EnvironmentVariables",
     "load_build_config",
     "create_default_config_file",
-    # Orchestrator (to be added)
+    # Orchestrator
     # "VUnitOrchestrator",
+    "VUnitOrchestrator",
+    "OrchestratorPhase",
+    "OrchestratorState",
+    "OrchestratorCallbacks",
+    "PhaseResult",
+    "build_project",
+
+
 ]
