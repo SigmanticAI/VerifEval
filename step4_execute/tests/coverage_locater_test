@@ -1,0 +1,147 @@
+"""
+Unit tests for coverage locator
+
+Author: TB Eval Team
+Version: 0.1.0
+"""
+
+import unittest
+import tempfile
+from pathlib import Path
+from ..parsers.coverage_locator import (
+    CoverageLocator,
+    CoverageOrganizer,
+    CoverageValidator,
+    locate_coverage,
+    validate_coverage,
+)
+from ..models import CoverageFormat, CoverageFile
+
+
+class TestCoverageLocator(unittest.TestCase):
+    """Test cases for coverage locator"""
+    
+    def setUp(self):
+        """Set up test fixtures"""
+        self.temp_dir = tempfile.mkdtemp()
+        self.working_dir = Path(self.temp_dir)
+        self.locator = CoverageLocator(self.working_dir)
+    
+    def tearDown(self):
+        """Clean up"""
+        import shutil
+        shutil.rmtree(self.temp_dir)
+    
+    def test_detect_verilator_format(self):
+        """Test detecting Verilator format"""
+        # Create dummy coverage file
+        cov_file = self.working_dir / "coverage.dat"
+        cov_file.write_bytes(b'\x00\x01\x02\x03' * 100)
+        
+        format = self.locator._detect_format(cov_file)
+        self.assertEqual(format, CoverageFormat.VERILATOR_DAT)
+    
+    def test_detect_lcov_format(self):
+        """Test detecting LCOV format"""
+        cov_file = self.working_dir / "coverage.info"
+        cov_file.write_text("TN:\nSF:file.sv\nDA:1,1\nend_of_record\n")
+        
+        format = self.locator._detect_format(cov_file)
+        self.assertEqual(format, CoverageFormat.LCOV)
+    
+    def test_is_coverage_file(self):
+        """Test coverage file detection"""
+        # Test by extension
+        self.assertTrue(self.locator._is_coverage_file(Path("coverage.dat")))
+        self.assertTrue(self.locator._is_coverage_file(Path("test.ucdb")))
+        
+        # Test by name pattern
+        self.assertTrue(self.locator._is_coverage_file(Path("my_coverage_file")))
+        self.assertTrue(self.locator._is_coverage_file(Path("cov_data")))
+        
+        # Test false positives
+        self.assertFalse(self.locator._is_coverage_file(Path("coverage.log")))
+    
+    def test_extract_test_name(self):
+        """Test extracting test name from filename"""
+        test_names = ["test_basic", "test_adder.test_overflow"]
+        
+        # Test pattern matching
+        name = self.locator._extract_test_name(
+            Path("coverage_test_basic.dat"),
+            test_names
+        )
+        self.assertEqual(name, "test_basic")
+        
+        # Test without known test names
+        name = self.locator._extract_test_name(
+            Path("coverage_my_test.dat"),
+            None
+        )
+        self.assertEqual(name, "my.test")
+    
+    def test_locate_all(self):
+        """Test locating all coverage files"""
+        # Create test coverage files
+        (self.working_dir / "coverage_test1.dat").write_bytes(b'\x00' * 100)
+        (self.working_dir / "coverage_test2.dat").write_bytes(b'\x00' * 100)
+        
+        subdir = self.working_dir / "subdir"
+        subdir.mkdir()
+        (subdir / "coverage.dat").write_bytes(b'\x00' * 100)
+        
+        # Locate
+        coverage_info = self.locator.locate_all()
+        
+        self.assertEqual(len(coverage_info.files), 3)
+        self.assertEqual(coverage_info.primary_format, CoverageFormat.VERILATOR_DAT)
+    
+    def test_locate_for_test(self):
+        """Test locating coverage for specific test"""
+        # Create test-specific coverage
+        (self.working_dir / "coverage_test_basic.dat").write_bytes(b'\x00' * 100)
+        
+        cov_file = self.locator.locate_for_test("test_basic")
+        
+        self.assertIsNotNone(cov_file)
+        self.assertEqual(cov_file.test_name, "test_basic")
+
+
+class TestCoverageValidator(unittest.TestCase):
+    """Test cases for coverage validator"""
+    
+    def test_validate_empty_coverage(self):
+        """Test validating empty coverage"""
+        from ..models import CoverageInfo
+        
+        coverage_info = CoverageInfo()
+        
+        is_valid, issues = CoverageValidator.validate_coverage_info(coverage_info)
+        
+        self.assertFalse(is_valid)
+        self.assertGreater(len(issues), 0)
+    
+    def test_validate_with_invalid_files(self):
+        """Test validation with invalid files"""
+        from ..models import CoverageInfo, CoverageFile
+        
+        coverage_info = CoverageInfo(
+            files=[
+                CoverageFile(
+                    test_name="test1",
+                    file_path="/tmp/coverage.dat",
+                    format=CoverageFormat.VERILATOR_DAT,
+                    size_bytes=0,  # Empty file
+                    valid=False,
+                )
+            ]
+        )
+        
+        is_valid, issues = CoverageValidator.validate_coverage_info(coverage_info)
+        
+        self.assertFalse(is_valid)
+        self.assertTrue(any("invalid" in issue.lower() for issue in issues))
+
+
+if __name__ == "__main__":
+    unittest.main()

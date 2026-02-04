@@ -1,0 +1,178 @@
+"""
+Unit tests for console parser
+
+Author: TB Eval Team
+Version: 0.1.0
+"""
+
+import unittest
+from ..parsers.console_parser import (
+    ConsoleParser,
+    DiagnosticSummary,
+    ErrorExtractor,
+    MessageSeverity,
+    MessageCategory,
+    parse_console_output,
+    extract_errors,
+)
+
+
+class TestConsoleParser(unittest.TestCase):
+    """Test cases for console parser"""
+    
+    def setUp(self):
+        """Set up test fixtures"""
+        self.parser = ConsoleParser()
+    
+    def test_parse_verilator_error(self):
+        """Test parsing Verilator error"""
+        output = "%Error: adder.sv:42:1: syntax error, unexpected IDENTIFIER"
+        
+        messages = self.parser.parse(output)
+        
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].severity, MessageSeverity.ERROR)
+        self.assertEqual(messages[0].location.file_path, "adder.sv")
+        self.assertEqual(messages[0].location.line, 42)
+        self.assertIn("syntax error", messages[0].message)
+    
+    def test_parse_modelsim_error(self):
+        """Test parsing ModelSim error"""
+        output = "** Error: (vlog-2110) adder.sv(42): Illegal reference to net"
+        
+        messages = self.parser.parse(output)
+        
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].severity, MessageSeverity.ERROR)
+        self.assertEqual(messages[0].code, "vlog-2110")
+        self.assertEqual(messages[0].location.file_path, "adder.sv")
+        self.assertEqual(messages[0].location.line, 42)
+    
+    def test_parse_ghdl_error(self):
+        """Test parsing GHDL error"""
+        output = "adder.vhd:42:1:error: syntax error"
+        
+        messages = self.parser.parse(output)
+        
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].severity, MessageSeverity.ERROR)
+        self.assertEqual(messages[0].location.file_path, "adder.vhd")
+        self.assertEqual(messages[0].location.line, 42)
+    
+    def test_parse_multiple_messages(self):
+        """Test parsing multiple messages"""
+        output = """
+%Error: adder.sv:42:1: syntax error
+%Warning-WIDTH: adder.sv:15:8: Width mismatch
+%Error: top.sv:28:12: Port connection error
+        """
+        
+        messages = self.parser.parse(output)
+        
+        self.assertEqual(len(messages), 3)
+        
+        errors = self.parser.get_errors(messages)
+        warnings = self.parser.get_warnings(messages)
+        
+        self.assertEqual(len(errors), 2)
+        self.assertEqual(len(warnings), 1)
+    
+    def test_categorize_assertion_failure(self):
+        """Test categorizing assertion failures"""
+        output = "%Error: assertion violation at time 100ns"
+        
+        messages = self.parser.parse(output)
+        
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].category, MessageCategory.ASSERTION_FAILURE)
+    
+    def test_categorize_syntax_error(self):
+        """Test categorizing syntax errors"""
+        output = "%Error: file.sv:1:1: syntax error"
+        
+        messages = self.parser.parse(output)
+        
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].category, MessageCategory.SYNTAX_ERROR)
+    
+    def test_deduplication(self):
+        """Test message deduplication"""
+        output = """
+%Error: adder.sv:42:1: syntax error
+%Error: adder.sv:42:1: syntax error
+%Error: adder.sv:42:1: syntax error
+        """
+        
+        messages = self.parser.parse(output)
+        
+        # Should only have one message due to deduplication
+        self.assertEqual(len(messages), 1)
+
+
+class TestDiagnosticSummary(unittest.TestCase):
+    """Test cases for diagnostic summary"""
+    
+    def test_summary_counts(self):
+        """Test summary counting"""
+        output = """
+%Error: file.sv:1:1: error 1
+%Error: file.sv:2:1: error 2
+%Warning: file.sv:3:1: warning 1
+        """
+        
+        messages = parse_console_output(output)
+        summary = DiagnosticSummary(messages)
+        
+        self.assertEqual(summary.total_count, 3)
+        self.assertEqual(summary.error_count, 2)
+        self.assertEqual(summary.warning_count, 1)
+        self.assertTrue(summary.has_errors)
+    
+    def test_affected_files(self):
+        """Test affected files tracking"""
+        output = """
+%Error: file1.sv:1:1: error
+%Error: file2.sv:1:1: error
+%Error: file1.sv:2:1: another error
+        """
+        
+        messages = parse_console_output(output)
+        summary = DiagnosticSummary(messages)
+        
+        self.assertEqual(len(summary.affected_files), 2)
+        self.assertIn("file1.sv", summary.affected_files)
+        self.assertIn("file2.sv", summary.affected_files)
+
+
+class TestErrorExtractor(unittest.TestCase):
+    """Test cases for error extractor"""
+    
+    def test_get_primary_error(self):
+        """Test extracting primary error"""
+        output = """
+%Warning: file.sv:1:1: warning
+%Error: file.sv:2:1: first error
+%Error: file.sv:3:1: second error
+        """
+        
+        messages = parse_console_output(output)
+        primary = ErrorExtractor.get_primary_error(messages)
+        
+        self.assertIsNotNone(primary)
+        self.assertEqual(primary.severity, MessageSeverity.ERROR)
+        self.assertIn("first error", primary.message)
+    
+    def test_failure_summary(self):
+        """Test failure summary generation"""
+        output = "%Error: adder.sv:42:1: syntax error, unexpected token"
+        
+        messages = parse_console_output(output)
+        summary = ErrorExtractor.get_failure_summary(messages)
+        
+        self.assertIn("adder.sv", summary)
+        self.assertIn("line 42", summary)
+        self.assertIn("syntax error", summary)
+
+
+if __name__ == "__main__":
+    unittest.main()

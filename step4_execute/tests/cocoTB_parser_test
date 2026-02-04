@@ -1,0 +1,164 @@
+"""
+Unit tests for CocoTB parser
+
+Author: TB Eval Team
+Version: 0.1.0
+"""
+
+import unittest
+from pathlib import Path
+import tempfile
+from ..parsers.cocotb_parser import (
+    CocoTBResultsParser,
+    CocoTBXMLValidator,
+    parse_cocotb_results,
+    validate_cocotb_results,
+)
+from ..models import TestOutcome
+
+
+class TestCocoTBResultsParser(unittest.TestCase):
+    """Test cases for CocoTB results parser"""
+    
+    def setUp(self):
+        """Set up test fixtures"""
+        self.parser = CocoTBResultsParser()
+    
+    def test_parse_passed_test(self):
+        """Test parsing a passed test"""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <testsuites>
+          <testsuite name="test_adder" tests="1">
+            <testcase name="test_basic" classname="test_adder" time="0.823">
+              <system-out>Test output</system-out>
+            </testcase>
+          </testsuite>
+        </testsuites>
+        """
+        
+        results = self.parser.parse_string(xml)
+        
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "test_basic")
+        self.assertEqual(results[0].full_name, "test_adder.test_basic")
+        self.assertEqual(results[0].outcome, TestOutcome.PASSED)
+        self.assertAlmostEqual(results[0].duration_ms, 823.0)
+        self.assertEqual(results[0].stdout, "Test output")
+    
+    def test_parse_failed_test(self):
+        """Test parsing a failed test"""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <testsuites>
+          <testsuite name="test_adder" tests="1">
+            <testcase name="test_overflow" classname="test_adder" time="1.125">
+              <failure message="Expected 0, got 256" type="AssertionError">
+                <![CDATA[Traceback (most recent call last):
+  File "test.py", line 42, in test_overflow
+    assert value == 0
+AssertionError: Expected 0, got 256]]>
+              </failure>
+            </testcase>
+          </testsuite>
+        </testsuites>
+        """
+        
+        results = self.parser.parse_string(xml)
+        
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].outcome, TestOutcome.FAILED)
+        self.assertIn("AssertionError", results[0].message)
+        self.assertIn("Traceback", results[0].traceback)
+    
+    def test_parse_errored_test(self):
+        """Test parsing an errored test"""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <testsuites>
+          <testsuite name="test_adder" tests="1">
+            <testcase name="test_error" classname="test_adder" time="0.5">
+              <error message="Simulator crashed" type="RuntimeError">
+                Error details
+              </error>
+            </testcase>
+          </testsuite>
+        </testsuites>
+        """
+        
+        results = self.parser.parse_string(xml)
+        
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].outcome, TestOutcome.ERROR)
+        self.assertIn("RuntimeError", results[0].message)
+    
+    def test_parse_skipped_test(self):
+        """Test parsing a skipped test"""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <testsuites>
+          <testsuite name="test_adder" tests="1">
+            <testcase name="test_skip" classname="test_adder" time="0">
+              <skipped message="Test skipped"/>
+            </testcase>
+          </testsuite>
+        </testsuites>
+        """
+        
+        results = self.parser.parse_string(xml)
+        
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].outcome, TestOutcome.SKIPPED)
+    
+    def test_parse_multiple_tests(self):
+        """Test parsing multiple tests"""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <testsuites>
+          <testsuite name="test_adder" tests="3">
+            <testcase name="test_1" classname="test_adder" time="0.5"/>
+            <testcase name="test_2" classname="test_adder" time="0.6"/>
+            <testcase name="test_3" classname="test_adder" time="0.7"/>
+          </testsuite>
+        </testsuites>
+        """
+        
+        results = self.parser.parse_string(xml)
+        
+        self.assertEqual(len(results), 3)
+        self.assertEqual(results[0].name, "test_1")
+        self.assertEqual(results[1].name, "test_2")
+        self.assertEqual(results[2].name, "test_3")
+
+
+class TestCocoTBXMLValidator(unittest.TestCase):
+    """Test cases for XML validator"""
+    
+    def test_validate_valid_xml(self):
+        """Test validating valid XML"""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <testsuites>
+          <testsuite name="test_adder" tests="1">
+            <testcase name="test_basic" classname="test_adder" time="0.5"/>
+          </testsuite>
+        </testsuites>
+        """
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as f:
+            f.write(xml)
+            xml_path = Path(f.name)
+        
+        try:
+            is_valid, issues = CocoTBXMLValidator.validate_file(xml_path)
+            self.assertTrue(is_valid)
+            self.assertEqual(len(issues), 0)
+        finally:
+            xml_path.unlink()
+    
+    def test_validate_missing_file(self):
+        """Test validating non-existent file"""
+        xml_path = Path("/tmp/nonexistent_file.xml")
+        
+        is_valid, issues = CocoTBXMLValidator.validate_file(xml_path)
+        
+        self.assertFalse(is_valid)
+        self.assertGreater(len(issues), 0)
+
+
+if __name__ == "__main__":
+    unittest.main()
