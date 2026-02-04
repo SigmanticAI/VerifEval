@@ -31,6 +31,7 @@ from .license import (
 # Verilator and GHDL will be added
 # from .verilator import VerilatorSimulator
 # from .ghdl import GHDLSimulator
+from .verilator import VerilatorSimulator, VerilatorInstallation, create_verilator_simulator
 
 __all__ = [
     # Base
@@ -39,6 +40,10 @@ __all__ = [
     # Questa
     "QuestaSimulator",
     "QuestaInstallation",
+    # Verilator 
+    "VerilatorSimulator",
+    "VerilatorInstallation",
+    "create_verilator_simulator",
     # License
     "LicenseManager",
     "LicenseCheckResult",
