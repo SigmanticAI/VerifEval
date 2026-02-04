@@ -44,6 +44,10 @@ __all__ = [
     "VerilatorSimulator",
     "VerilatorInstallation",
     "create_verilator_simulator",
+    # GHDL
+    "GHDLSimulator",
+    "GHDLInstallation",
+    "create_ghdl_simulator",
     # License
     "LicenseManager",
     "LicenseCheckResult",
