@@ -735,6 +735,12 @@ class BuildManifest:
     
     # Compilation results
     compilation: Optional[CompilationResult] = None
+
+    #Execution info
+    execution_command: List[str] = field(default_factory=list)
+    execution_env: Dict[str, str] = field(default_factory=dict)
+    execution_cwd: Optional[str] = None
+    track_used: Optional[str] = None  # "A" or "B"
     
     # Test discovery
     tests_discovered: Optional[TestDiscoveryResult] = None
