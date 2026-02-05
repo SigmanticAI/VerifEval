@@ -1,0 +1,157 @@
+"""
+Unit tests for summary reporter
+
+Author: TB Eval Team
+Version: 0.1.0
+"""
+
+import unittest
+from io import StringIO
+from pathlib import Path
+
+from ..models import TestReport, TestResult, TestOutcome, TestSummary, ExecutionMetadata
+from ..reporters.summary_reporter import (
+    SummaryReporter,
+    CompactSummaryReporter,
+    SummaryFormat,
+    SummaryVerbosity,
+    generate_summary,
+    generate_compact_summary,
+)
+
+
+class TestSummaryReporter(unittest.TestCase):
+    """Test cases for summary reporter"""
+    
+    def setUp(self):
+        """Set up test fixtures"""
+        # Create sample report
+        self.report = TestReport()
+        
+        # Add metadata
+        self.report.execution_metadata = ExecutionMetadata(
+            timestamp="2024-01-15T14:30:00Z",
+            hostname="test-host",
+        )
+        
+        # Add test results
+        self.report.results = [
+            TestResult(
+                name="test_pass",
+                full_name="module.test_pass",
+                outcome=TestOutcome.PASSED,
+                duration_ms=100,
+            ),
+            TestResult(
+                name="test_fail",
+                full_name="module.test_fail",
+                outcome=TestOutcome.FAILED,
+                duration_ms=200,
+                message="Assertion failed",
+            ),
+            TestResult(
+                name="test_skip",
+                full_name="module.test_skip",
+                outcome=TestOutcome.SKIPPED,
+                duration_ms=0,
+            ),
+        ]
+        
+        # Update summary
+        self.report.summary = TestSummary(
+            total_tests=3,
+            completed_tests=3,
+            passed=1,
+            failed=1,
+            skipped=1,
+            total_duration_ms=300,
+        )
+    
+    def test_generate_console_summary(self):
+        """Test generating console summary"""
+        reporter = SummaryReporter(
+            self.report,
+            SummaryFormat.CONSOLE,
+            SummaryVerbosity.NORMAL
+        )
+        
+        output = StringIO()
+        summary = reporter.generate(output)
+        
+        self.assertIn("TEST EXECUTION SUMMARY", summary)
+        self.assertIn("Overview", summary)
+        self.assertIn("Total Tests", summary)
+    
+    def test_generate_markdown_summary(self):
+        """Test generating markdown summary"""
+        reporter = SummaryReporter(
+            self.report,
+            SummaryFormat.MARKDOWN,
+            SummaryVerbosity.NORMAL
+        )
+        
+        output = StringIO()
+        summary = reporter.generate(output)
+        
+        self.assertIn("# Test Execution Summary", summary)
+        self.assertIn("## Overview", summary)
+        self.assertIn("|", summary)  # Table marker
+    
+    def test_minimal_verbosity(self):
+        """Test minimal verbosity"""
+        reporter = SummaryReporter(
+            self.report,
+            SummaryFormat.TEXT,
+            SummaryVerbosity.MINIMAL
+        )
+        
+        summary = reporter.generate(StringIO())
+        
+        # Should have overview but not detailed results
+        self.assertIn("Overview", summary)
+        self.assertNotIn("Test Results", summary)
+    
+    def test_detailed_verbosity(self):
+        """Test detailed verbosity"""
+        reporter = SummaryReporter(
+            self.report,
+            SummaryFormat.TEXT,
+            SummaryVerbosity.DETAILED
+        )
+        
+        summary = reporter.generate(StringIO())
+        
+        # Should have detailed results
+        self.assertIn("Test Results", summary)
+        self.assertIn("Failed Tests Details", summary)
+    
+    def test_compact_summary(self):
+        """Test compact one-line summary"""
+        reporter = CompactSummaryReporter(self.report)
+        summary = reporter.generate()
+        
+        self.assertIn("passed", summary.lower())
+        self.assertIn("failed", summary.lower())
+    
+    def test_save_to_file(self):
+        """Test saving summary to file"""
+        import tempfile
+        
+        reporter = SummaryReporter(
+            self.report,
+            SummaryFormat.TEXT,
+            SummaryVerbosity.NORMAL
+        )
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "summary.txt"
+            saved_path = reporter.save(output_path)
+            
+            self.assertTrue(saved_path.exists())
+            
+            content = saved_path.read_text()
+            self.assertIn("TEST EXECUTION SUMMARY", content)
+
+
+if __name__ == "__main__":
+    unittest.main()
