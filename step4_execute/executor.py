@@ -714,6 +714,25 @@ class TestExecutor:
             error_msg = f"Failed to save report: {e}"
             self.report.diagnostics.errors.append(error_msg)
             print(f"{self.formatter.error(error_msg)}")
+
+ 
+    async def _save_junit_report(self):
+        """Save JUnit XML report if requested"""
+        if self.config.junit_output:
+            try:
+                from .reporters.junit_reporter import generate_junit
+                
+                junit_path = self.config.junit_output
+                if not Path(junit_path).is_absolute():
+                    junit_path = self.working_dir / junit_path
+                
+                generate_junit(self.report, junit_path)
+                print(f"JUnit XML: {self.formatter.dim(str(junit_path))}")
+            
+            except Exception as e:
+                error_msg = f"Failed to generate JUnit XML: {e}"
+                self.report.diagnostics.errors.append(error_msg)
+                print(f"{self.formatter.error(error_msg)}")
     
     async def _handle_interruption(self) -> TestReport:
         """Handle keyboard interrupt"""
