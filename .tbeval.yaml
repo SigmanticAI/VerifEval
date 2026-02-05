@@ -1,0 +1,35 @@
+execution:
+  # Set timeouts
+  timeouts:
+    per_test_seconds: 600        # 10 minutes per test
+    test_suite_seconds: 3600     # 1 hour for suite
+    global_seconds: 7200         # 2 hours maximum
+
+  # Configure retry
+  retry:
+    enabled: true
+    max_attempts: 3
+    delay_seconds: 5.0
+    exponential_backoff: true
+    retry_on:
+      - failed
+      - timeout
+
+  # Parallel execution
+  parallelism:
+    strategy: delegate
+    max_parallel_tests: 8
+    vunit_parallel_jobs: 8
+
+  # Output settings
+  output:
+    verbosity: verbose
+    color: true
+    stream_output: true
+
+# Coverage settings
+coverage:
+  enabled: true
+  formats:
+    - verilator_dat
+    - lcov

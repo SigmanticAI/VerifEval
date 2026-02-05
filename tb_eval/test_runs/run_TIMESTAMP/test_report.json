@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "framework_version": "0.1.0",
+  "status": "completed",
+  "summary": {
+    "total_tests": 10,
+    "completed_tests": 10,
+    "passed": 8,
+    "failed": 2,
+    "success_rate": 0.8,
+    "total_duration_ms": 12500.0
+  },
+  "results": [
+    {
+      "name": "test_basic",
+      "full_name": "test_adder.test_basic",
+      "outcome": "passed",
+      "duration_ms": 520.0,
+      "assertions": {
+        "total": 5,
+        "passed": 5
+      }
+    }
+  ],
+  "coverage": {
+    "files": [...],
+    "primary_format": "verilator_dat"
+  }
+}
