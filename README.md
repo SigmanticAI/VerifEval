@@ -45,7 +45,25 @@ VerifEval/
 ├── QUICKSTART.md              # Getting started guide
 └── FAQ.md                     # Frequently asked questions
 ```
+# TB Eval Framework - Step 4: Test Execution
 
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://github.com/tbeval/step4-execute/workflows/tests/badge.svg)](https://github.com/tbeval/step4-execute/actions)
+
+Execute and evaluate hardware verification testbenches with support for multiple frameworks and simulators.
+
+## 🚀 Quick Start
+
+```bash
+# Install
+pip install tbeval-step4-execute
+
+# Run tests
+tbeval-run /path/to/submission
+
+# Generate reports
+tbeval-run --junit results.xml --html report.html submission/
 ## Scoring Methodology
 
 ### Dimensions (100 points total)
