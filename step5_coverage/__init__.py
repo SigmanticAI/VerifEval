@@ -85,15 +85,17 @@ from .models import (
 # IMPORTS - Configuration (will be implemented next)
 # =============================================================================
 
-# Placeholder imports - will be uncommented once config.py is implemented
-# from .config import (
-#     CoverageThresholds,
-#     CoverageWeights,
-#     ParserConfig,
-#     MergingConfig,
-#     ReportingConfig,
-#     CoverageAnalysisConfig,
-# )
+from .config import (
+    CoverageThresholds,
+    CoverageWeights,
+    ParserConfig,
+    MergingConfig,
+    ReportingConfig,
+    CoverageAnalysisConfig,
+    load_config_from_yaml,
+    create_default_config_file,
+    load_config_from_env,
+)
 
 
 # =============================================================================
@@ -175,6 +177,15 @@ __all__ = [
     # Helper functions
     "merge_module_coverage",
     "calculate_differential_coverage",
+    "CoverageThresholds",
+    "CoverageWeights",
+    "ParserConfig",
+    "MergingConfig",
+    "ReportingConfig",
+    "CoverageAnalysisConfig",
+    "load_config_from_yaml",
+    "create_default_config_file",
+    "load_config_from_env",
     
     # Configuration (to be uncommented)
     # "CoverageThresholds",
