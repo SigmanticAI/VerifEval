@@ -35,6 +35,16 @@ from .lcov_parser import (
     get_lcov_version,
 )
 
+from .format_detector import (
+    FormatDetector,
+    DetectionResult,
+    BatchDetectionResult,
+    create_detector,
+    detect_format,
+    detect_and_parse,
+    group_coverage_files,
+)
+
 # Parsers will be imported as they're implemented
 # from .verilator_parser import VerilatorParser
 # from .lcov_parser import LCOVParser
@@ -54,6 +64,14 @@ __all__ = [
     "create_lcov_parser",
     "is_lcov_available",
     "get_lcov_version",
+    # Format detector
+    "FormatDetector",
+    "DetectionResult",
+    "BatchDetectionResult",
+    "create_detector",
+    "detect_format",
+    "detect_and_parse",
+    "group_coverage_files",
     
     # Parsers (to be uncommented as implemented)
     # "VerilatorParser",
