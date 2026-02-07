@@ -97,6 +97,17 @@ from .config import (
     load_config_from_env,
 )
 
+from .base import (
+    BaseParser,
+    ParseResult,
+    MergeResult,
+)
+from .verilator_parser import (
+    VerilatorParser,
+    create_verilator_parser,
+    is_verilator_coverage_available,
+    get_verilator_coverage_version,
+)
 
 # =============================================================================
 # IMPORTS - Parsers (to be implemented)
@@ -186,6 +197,15 @@ __all__ = [
     "load_config_from_yaml",
     "create_default_config_file",
     "load_config_from_env",
+    "BaseParser",
+    "ParseResult",
+    "MergeResult",
+    
+    # Verilator parser
+    "VerilatorParser",
+    "create_verilator_parser",
+    "is_verilator_coverage_available",
+    "get_verilator_coverage_version",
     
     # Configuration (to be uncommented)
     # "CoverageThresholds",
