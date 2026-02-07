@@ -1,27 +1,25 @@
-"""
 Verilator coverage parser
 
-Parses Verilator coverage.dat files (Q11 - highest priority parser)
+Parses Verilator coverage.dat files and generates coverage metrics.
 
 Verilator Coverage Format:
-- Native format: Binary/text hybrid .dat files
-- Annotated format: LCOV-like format from verilator_coverage --annotate
-- Coverage types: Line, branch, toggle
+- Binary/text hybrid format (mostly text)
+- Records: C, L, B, T, FN, FNDA, etc.
+- Can be converted to LCOV format via verilator_coverage tool
 
-Strategy (Q12 Option C):
-1. Try verilator_coverage tool (preferred - faster, more accurate)
-2. Fall back to Python parsing of .dat format
+Implementation Strategy (Q12 Option C):
+1. Try verilator_coverage --write-info (generates LCOV)
+2. Fall back to direct .dat parsing
 
 Author: TB Eval Team
 Version: 0.1.0
 """
 
-from pathlib import Path
-from typing import Optional, List, Dict, Any, Set, Tuple
+import re
 import tempfile
 import shutil
-import json
-import re
+from pathlib import Path
+from typing import Optional, List, Dict, Set, Tuple
 from dataclasses import dataclass
 
 from .base import BaseParser, ParseResult, MergeResult
@@ -37,38 +35,57 @@ from ..config import ParserConfig
 
 
 # =============================================================================
-# VERILATOR COVERAGE PARSER
+# VERILATOR FORMAT CONSTANTS
+# =============================================================================
+
+# Verilator .dat file signatures
+VERILATOR_SIGNATURES = [
+    b"Verilator coverage",
+    b"# Verilator",
+    b"coverage database",
+]
+
+# Record type prefixes in .dat format
+RECORD_TYPES = {
+    'C': 'coverage_line',      # Coverage record
+    'L': 'line',               # Line coverage
+    'B': 'branch',             # Branch coverage  
+    'T': 'toggle',             # Toggle coverage
+    'FN': 'function_name',     # Function name
+    'FNDA': 'function_data',   # Function data
+    'SF': 'source_file',       # Source file
+    'end_of_record': 'eor',    # End of record
+}
+
+
+# =============================================================================
+# VERILATOR PARSER
 # =============================================================================
 
 class VerilatorParser(BaseParser):
     """
     Parser for Verilator coverage.dat format (Q11 - highest priority)
     
-    Verilator generates coverage data in a proprietary .dat format.
-    The best way to parse it is using verilator_coverage tool.
+    Verilator generates coverage data in a proprietary .dat format that
+    can be processed by the verilator_coverage tool.
     
-    Features:
-    - Line coverage
-    - Branch coverage  
-    - Toggle coverage
-    - Merge support via verilator_coverage --write
+    Format Details:
+    - Text-based with binary sections
+    - Line coverage: Lines executed and hit counts
+    - Branch coverage: Branch decisions taken/not taken
+    - Toggle coverage: Signal bit transitions (0->1, 1->0)
     
-    Usage:
-        >>> parser = VerilatorParser()
-        >>> result = parser.parse_file(Path("coverage.dat"))
-        >>> if result.success:
-        ...     print(f"Line coverage: {result.coverage.line_coverage_percent}%")
+    External Tool: verilator_coverage
+    - Convert to LCOV: verilator_coverage --write-info output.info input.dat
+    - Merge files: verilator_coverage --write merged.dat file1.dat file2.dat
+    - Annotate: verilator_coverage --annotate output_dir input.dat
     """
     
     def __init__(self, config: Optional[ParserConfig] = None):
-        """
-        Initialize Verilator parser
-        
-        Args:
-            config: Parser configuration
-        """
+        """Initialize Verilator parser"""
         super().__init__(config)
-        self._verilator_version: Optional[str] = None
+        self._verilator_tool: Optional[Path] = None
+        self._tool_checked = False
     
     # =========================================================================
     # ABSTRACT METHOD IMPLEMENTATIONS
@@ -76,55 +93,40 @@ class VerilatorParser(BaseParser):
     
     def can_parse(self, file_path: Path) -> bool:
         """
-        Check if file is Verilator coverage.dat format
+        Check if file is Verilator coverage format
         
         Detection strategy:
         1. Check file extension (.dat)
-        2. Check for Verilator magic markers in file
+        2. Check for Verilator signatures in header
         
         Args:
             file_path: Path to coverage file
         
         Returns:
-            True if file is Verilator coverage format
+            True if file appears to be Verilator format
         """
         file_path = Path(file_path)
         
         # Check extension
-        if file_path.suffix not in [".dat", ".info"]:
+        if file_path.suffix.lower() != '.dat':
             return False
         
-        # For .info files, might be LCOV format
-        if file_path.suffix == ".info":
-            # Only accept if it's from Verilator
-            return self._is_verilator_info_file(file_path)
-        
-        # Check file content for Verilator markers
+        # Check for Verilator signatures
         try:
             with open(file_path, 'rb') as f:
-                # Read first 512 bytes
-                header = f.read(512)
+                header = f.read(512)  # Read first 512 bytes
                 
-                # Check for Verilator-specific markers
-                # Verilator coverage files often contain these strings
-                markers = [
-                    b'Verilator',
-                    b'coverage',
-                    b'vlcov',  # Verilator coverage internal format
-                    b'SF:',    # Source File marker (LCOV-like)
-                    b'FNDA:',  # Function Data marker
-                ]
-                
-                if any(marker in header for marker in markers):
-                    return True
-                
-                # Check if it's a text-based .dat file
-                try:
-                    text_header = header.decode('utf-8', errors='ignore')
-                    if 'TN:' in text_header or 'SF:' in text_header:
+                # Check for any Verilator signature
+                for signature in VERILATOR_SIGNATURES:
+                    if signature in header:
                         return True
-                except:
-                    pass
+                
+                # Also check for common record types in text mode
+                header_text = header.decode('utf-8', errors='ignore')
+                if any(marker in header_text for marker in ['SF:', 'FN:', 'FNDA:', 'DA:']):
+                    # Might be LCOV format from verilator_coverage --write-info
+                    # We can handle this too
+                    return True
         
         except Exception as e:
             self.logger.debug(f"Error checking file format: {e}")
@@ -133,138 +135,238 @@ class VerilatorParser(BaseParser):
         return False
     
     def get_format(self) -> CoverageFormat:
-        """Get coverage format identifier"""
+        """Return Verilator format identifier"""
         return CoverageFormat.VERILATOR_DAT
     
     def _get_external_tool_path(self) -> Optional[Path]:
         """
-        Get path to verilator_coverage tool
+        Find verilator_coverage tool
         
         Checks:
         1. Config-specified path
-        2. System PATH (verilator_coverage)
-        3. Common installation locations
+        2. System PATH
         
         Returns:
             Path to verilator_coverage tool, or None if not found
         """
-        # Check config first
+        if self._tool_checked:
+            return self._verilator_tool
+        
+        self._tool_checked = True
+        
+        # Check config
         if self.config.verilator_tool_path:
             tool_path = Path(self.config.verilator_tool_path)
             if tool_path.exists():
-                return tool_path
+                self._verilator_tool = tool_path
+                return self._verilator_tool
         
         # Check system PATH
-        tool_path = self.find_tool_in_path("verilator_coverage")
-        if tool_path:
-            return tool_path
+        self._verilator_tool = self.find_tool_in_path("verilator_coverage")
         
-        # Check common installation locations
-        common_paths = [
-            Path("/usr/bin/verilator_coverage"),
-            Path("/usr/local/bin/verilator_coverage"),
-            Path.home() / ".local/bin/verilator_coverage",
-        ]
+        if self._verilator_tool:
+            self.logger.info(f"Found verilator_coverage: {self._verilator_tool}")
+        else:
+            self.logger.debug("verilator_coverage tool not found")
         
-        for path in common_paths:
-            if path.exists():
-                return path
-        
-        return None
+        return self._verilator_tool
+    
+    # =========================================================================
+    # TOOL-BASED PARSING (Q12 - preferred method)
+    # =========================================================================
     
     def _parse_with_tool(self, file_path: Path) -> Optional[ParseResult]:
         """
-        Parse Verilator coverage using verilator_coverage tool (Q12 - preferred)
+        Parse using verilator_coverage tool
         
         Strategy:
-        1. Run verilator_coverage --annotate to generate human-readable output
-        2. Parse the annotated output files
+        1. Convert .dat to LCOV format: verilator_coverage --write-info
+        2. Parse the LCOV output
         
         Args:
-            file_path: Path to coverage.dat file
+            file_path: Path to Verilator .dat file
         
         Returns:
             ParseResult if successful, None if tool unavailable/failed
         """
         tool_path = self._get_external_tool_path()
         if not tool_path:
-            self.logger.debug("verilator_coverage tool not found")
             return None
         
-        # Get Verilator version
-        if self._verilator_version is None:
-            self._verilator_version = self._get_verilator_version(tool_path)
+        self.logger.debug(f"Parsing {file_path} with verilator_coverage tool")
         
+        # Create temporary file for LCOV output
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.info', delete=False) as tmp:
+            lcov_path = Path(tmp.name)
+        
+        try:
+            # Run verilator_coverage --write-info
+            result = self.run_external_tool(
+                [
+                    str(tool_path),
+                    '--write-info', str(lcov_path),
+                    str(file_path)
+                ],
+                timeout=60
+            )
+            
+            if result.returncode != 0:
+                self.logger.debug(f"verilator_coverage failed: {result.stderr}")
+                return None
+            
+            if not lcov_path.exists() or lcov_path.stat().st_size == 0:
+                self.logger.debug("verilator_coverage produced no output")
+                return None
+            
+            # Parse the generated LCOV file
+            parse_result = self._parse_lcov_output(lcov_path)
+            
+            if parse_result.success:
+                self.logger.debug("Successfully parsed verilator_coverage output")
+            
+            return parse_result
+        
+        except Exception as e:
+            self.logger.debug(f"Tool-based parsing failed: {e}")
+            return None
+        
+        finally:
+            # Cleanup temporary file
+            if lcov_path.exists():
+                lcov_path.unlink()
+    
+    def _parse_lcov_output(self, lcov_path: Path) -> ParseResult:
+        """
+        Parse LCOV format output from verilator_coverage
+        
+        LCOV format:
+        TN:<test name>
+        SF:<source file>
+        FN:<line>,<function name>
+        FNDA:<execution count>,<function name>
+        DA:<line>,<hit count>
+        BRDA:<line>,<block>,<branch>,<taken>
+        end_of_record
+        
+        Args:
+            lcov_path: Path to LCOV file
+        
+        Returns:
+            ParseResult with parsed coverage
+        """
         result = ParseResult(success=True)
         
         try:
-            # Create temporary directory for annotated output
-            with tempfile.TemporaryDirectory() as tmpdir:
-                tmpdir = Path(tmpdir)
-                
-                # Run verilator_coverage --annotate
-                self.logger.debug(f"Running verilator_coverage on {file_path}")
-                
-                cmd = [
-                    str(tool_path),
-                    "--annotate", str(tmpdir),
-                    "--annotate-all",
-                    str(file_path)
-                ]
-                
-                proc_result = self.run_external_tool(cmd, timeout=60)
-                
-                if proc_result.returncode != 0:
-                    result.add_error(f"verilator_coverage failed: {proc_result.stderr}")
-                    return None
-                
-                # Parse annotated output
-                module = self._parse_annotated_output(tmpdir, file_path)
-                
-                if module is None:
-                    result.add_error("Failed to parse annotated output")
-                    return None
-                
-                result.coverage = module
-                result.metadata["verilator_version"] = self._verilator_version
-                result.metadata["annotate_dir"] = str(tmpdir)
+            module = ModuleCoverage(module_name="verilator_coverage")
+            current_file: Optional[FileCoverage] = None
+            current_file_path: Optional[str] = None
+            
+            with open(lcov_path, 'r') as f:
+                for line_num, line in enumerate(f, 1):
+                    line = line.strip()
+                    
+                    if not line or line.startswith('#'):
+                        continue
+                    
+                    # Parse record type
+                    if ':' not in line:
+                        continue
+                    
+                    record_type, record_data = line.split(':', 1)
+                    
+                    # Source file
+                    if record_type == 'SF':
+                        current_file_path = record_data
+                        current_file = FileCoverage(file_path=current_file_path)
+                        module.files[current_file_path] = current_file
+                    
+                    # Line coverage: DA:<line>,<hits>
+                    elif record_type == 'DA' and current_file:
+                        parts = record_data.split(',')
+                        if len(parts) >= 2:
+                            try:
+                                line_no = int(parts[0])
+                                hits = int(parts[1])
+                                current_file.lines[line_no] = LineCoverageData(
+                                    line_number=line_no,
+                                    hit_count=hits
+                                )
+                            except ValueError:
+                                result.add_warning(f"Invalid DA record at line {line_num}")
+                    
+                    # Branch coverage: BRDA:<line>,<block>,<branch>,<taken>
+                    elif record_type == 'BRDA' and current_file:
+                        parts = record_data.split(',')
+                        if len(parts) >= 4:
+                            try:
+                                line_no = int(parts[0])
+                                block = int(parts[1])
+                                branch = int(parts[2])
+                                taken = int(parts[3]) if parts[3] != '-' else 0
+                                
+                                current_file.branches.append(BranchData(
+                                    line_number=line_no,
+                                    block_number=block,
+                                    branch_number=branch,
+                                    taken_count=taken,
+                                    not_taken_count=0  # LCOV doesn't track not-taken separately
+                                ))
+                            except ValueError:
+                                result.add_warning(f"Invalid BRDA record at line {line_num}")
+                    
+                    # End of record
+                    elif record_type == 'end_of_record':
+                        current_file = None
+                        current_file_path = None
+            
+            if not module.files:
+                result.add_error("No coverage data found in LCOV output")
+                return result
+            
+            result.coverage = module
+            result.success = True
         
         except Exception as e:
-            self.logger.error(f"Tool parsing failed: {e}", exc_info=True)
-            result.add_error(f"Tool execution failed: {e}")
-            return None
+            result.add_error(f"Failed to parse LCOV output: {e}")
         
         return result
     
+    # =========================================================================
+    # PYTHON-BASED PARSING (Q12 - fallback method)
+    # =========================================================================
+    
     def _parse_with_python(self, file_path: Path) -> ParseResult:
         """
-        Parse Verilator coverage using pure Python (Q12 - fallback)
+        Parse Verilator .dat file using pure Python
         
-        Parses the .dat file directly without external tools.
-        The .dat format is text-based and similar to LCOV format.
+        This is the fallback when verilator_coverage tool is unavailable.
+        
+        Verilator .dat format (LCOV-compatible):
+        - Text-based with colon-separated records
+        - Format: RECORD_TYPE:data
+        - Main types: SF (source file), DA (line data), BRDA (branch data)
         
         Args:
-            file_path: Path to coverage.dat file
+            file_path: Path to Verilator .dat file
         
         Returns:
-            ParseResult with parsed coverage data
+            ParseResult with parsed coverage
         """
+        self.logger.debug(f"Parsing {file_path} with Python parser")
+        
         result = ParseResult(success=True)
         
         try:
-            module = ModuleCoverage(
-                module_name=file_path.stem,
-                source_files=[]
-            )
+            module = ModuleCoverage(module_name="verilator_parsed")
             
+            # Read file
             lines = self.read_file_lines(file_path)
             if not lines:
                 result.add_error("Failed to read file or file is empty")
                 return result
             
-            # Parse lines
-            current_file: Optional[str] = None
-            current_file_cov: Optional[FileCoverage] = None
+            current_file: Optional[FileCoverage] = None
+            current_file_path: Optional[str] = None
             
             for line_num, line in enumerate(lines, 1):
                 line = line.strip()
@@ -273,97 +375,156 @@ class VerilatorParser(BaseParser):
                 if not line or line.startswith('#'):
                     continue
                 
-                # Parse record type
+                # Check for colon separator (LCOV format)
                 if ':' not in line:
+                    # Skip lines without colons (malformed or non-data lines)
                     continue
                 
-                parts = line.split(':', 1)
-                if len(parts) != 2:
+                # Split into record type and data (LCOV style - consistent with detection)
+                try:
+                    record_type, record_data = line.split(':', 1)
+                except ValueError:
+                    result.add_warning(f"Malformed record at line {line_num}: {line}")
                     continue
                 
-                record_type = parts[0]
-                record_data = parts[1]
+                # Source File: SF:<path>
+                if record_type == 'SF':
+                    current_file_path = record_data
+                    current_file = FileCoverage(file_path=current_file_path)
+                    module.files[current_file_path] = current_file
+                    if current_file_path not in module.source_files:
+                        module.source_files.append(current_file_path)
                 
-                # TN: Test Name
-                if record_type == 'TN':
-                    result.metadata["test_name"] = record_data
+                # Test Name: TN:<name>
+                elif record_type == 'TN':
+                    # Store test name in metadata (optional)
+                    if not module.module_name or module.module_name == "verilator_parsed":
+                        module.module_name = record_data or "verilator_coverage"
                 
-                # SF: Source File
-                elif record_type == 'SF':
-                    current_file = record_data
-                    if current_file not in module.files:
-                        current_file_cov = FileCoverage(file_path=current_file)
-                        module.files[current_file] = current_file_cov
-                        if current_file not in module.source_files:
-                            module.source_files.append(current_file)
-                    else:
-                        current_file_cov = module.files[current_file]
-                
-                # FN: Function (line, name)
+                # Function Name: FN:<line>,<name>
                 elif record_type == 'FN':
-                    # Function definition - we track these but don't create separate coverage
+                    # Store function info (for future Phase 2 functional coverage)
                     pass
                 
-                # FNDA: Function Data (execution_count, function_name)
+                # Function Data: FNDA:<count>,<name>
                 elif record_type == 'FNDA':
-                    # Function coverage - we track at line level
+                    # Store function coverage (for future Phase 2 functional coverage)
                     pass
                 
-                # FNF: Functions Found
-                elif record_type == 'FNF':
-                    result.metadata["functions_found"] = int(record_data)
+                # Line Data: DA:<line>,<hits>[,<checksum>]
+                elif record_type == 'DA' and current_file:
+                    data_parts = record_data.split(',')
+                    if len(data_parts) >= 2:
+                        try:
+                            line_no = int(data_parts[0])
+                            hits = int(data_parts[1])
+                            
+                            current_file.lines[line_no] = LineCoverageData(
+                                line_number=line_no,
+                                hit_count=hits
+                            )
+                        except ValueError as e:
+                            result.add_warning(f"Invalid DA record at line {line_num}: {line}")
+                    else:
+                        result.add_warning(f"Incomplete DA record at line {line_num}: {line}")
                 
-                # FNH: Functions Hit
-                elif record_type == 'FNH':
-                    result.metadata["functions_hit"] = int(record_data)
+                # Branch Data: BRDA:<line>,<block>,<branch>,<taken>
+                elif record_type == 'BRDA' and current_file:
+                    data_parts = record_data.split(',')
+                    if len(data_parts) >= 4:
+                        try:
+                            line_no = int(data_parts[0])
+                            block = int(data_parts[1])
+                            branch = int(data_parts[2])
+                            # Handle '-' for not executed branches
+                            taken = int(data_parts[3]) if data_parts[3] != '-' else 0
+                            
+                            current_file.branches.append(BranchData(
+                                line_number=line_no,
+                                block_number=block,
+                                branch_number=branch,
+                                taken_count=taken,
+                                not_taken_count=0  # LCOV doesn't track not-taken separately
+                            ))
+                        except ValueError as e:
+                            result.add_warning(f"Invalid BRDA record at line {line_num}: {line}")
+                    else:
+                        result.add_warning(f"Incomplete BRDA record at line {line_num}: {line}")
                 
-                # DA: Line Data (line_number, hit_count)
-                elif record_type == 'DA' and current_file_cov:
-                    self._parse_line_data(record_data, current_file_cov, result)
-                
-                # BRDA: Branch Data (line, block, branch, taken)
-                elif record_type == 'BRDA' and current_file_cov:
-                    self._parse_branch_data(record_data, current_file_cov, result)
-                
-                # BRF: Branches Found
-                elif record_type == 'BRF':
-                    result.metadata["branches_found"] = int(record_data)
-                
-                # BRH: Branches Hit
-                elif record_type == 'BRH':
-                    result.metadata["branches_hit"] = int(record_data)
-                
-                # LF: Lines Found
+                # Lines Found: LF:<count>
                 elif record_type == 'LF':
-                    if current_file_cov:
-                        result.metadata[f"{current_file}_lines_found"] = int(record_data)
+                    # Line count validation (optional)
+                    pass
                 
-                # LH: Lines Hit
+                # Lines Hit: LH:<count>
                 elif record_type == 'LH':
-                    if current_file_cov:
-                        result.metadata[f"{current_file}_lines_hit"] = int(record_data)
+                    # Line hit count validation (optional)
+                    pass
                 
-                # end_of_record
+                # Branches Found: BRF:<count>
+                elif record_type == 'BRF':
+                    # Branch count validation (optional)
+                    pass
+                
+                # Branches Hit: BRH:<count>
+                elif record_type == 'BRH':
+                    # Branch hit count validation (optional)
+                    pass
+                
+                # Functions Found: FNF:<count>
+                elif record_type == 'FNF':
+                    # Function count (Phase 2)
+                    pass
+                
+                # Functions Hit: FNH:<count>
+                elif record_type == 'FNH':
+                    # Function hit count (Phase 2)
+                    pass
+                
+                # End of record
                 elif record_type == 'end_of_record':
                     current_file = None
-                    current_file_cov = None
+                    current_file_path = None
+                
+                # Unknown record type
+                else:
+                    # Don't warn on every unknown type, just log for debugging
+                    self.logger.debug(f"Unknown record type at line {line_num}: {record_type}")
             
+            # Validate we got some data
             if not module.files:
-                result.add_warning("No coverage data found in file")
+                result.add_error("No coverage data found in .dat file")
+                return result
+            
+            # Final validation: check if we have any actual coverage data
+            has_data = False
+            for file_cov in module.files.values():
+                if file_cov.lines or file_cov.branches:
+                    has_data = True
+                    break
+            
+            if not has_data:
+                result.add_error("Coverage file contains source files but no coverage data")
+                return result
             
             result.coverage = module
+            result.success = True
         
         except Exception as e:
-            self.logger.error(f"Python parsing failed: {e}", exc_info=True)
-            result.add_error(f"Parsing failed: {e}")
+            result.add_error(f"Python parsing failed: {e}")
+            import traceback
+            self.logger.debug(f"Parse exception: {traceback.format_exc()}")
         
         return result
+    # =========================================================================
+    # MERGING (Q6.2)
+    # =========================================================================
     
     def _merge_with_tool(self, coverage_files: List[Path]) -> Optional[MergeResult]:
         """
-        Merge Verilator coverage files using verilator_coverage tool (Q6.2 - preferred)
+        Merge Verilator .dat files using verilator_coverage tool
         
-        Uses: verilator_coverage --write merged.dat file1.dat file2.dat ...
+        Command: verilator_coverage --write merged.dat file1.dat file2.dat ...
         
         Args:
             coverage_files: List of .dat files to merge
@@ -375,418 +536,242 @@ class VerilatorParser(BaseParser):
         if not tool_path:
             return None
         
-        result = MergeResult(success=True)
+        self.logger.debug(f"Merging {len(coverage_files)} files with verilator_coverage tool")
+        
+        # Create temporary file for merged output
+        with tempfile.NamedTemporaryFile(suffix='.dat', delete=False) as tmp:
+            merged_path = Path(tmp.name)
         
         try:
-            # Create temporary merged file
-            with tempfile.NamedTemporaryFile(
-                suffix=".dat",
-                delete=False,
-                dir=tempfile.gettempdir()
-            ) as merged_file:
-                merged_path = Path(merged_file.name)
-            
-            # Run verilator_coverage --write
-            self.logger.debug(f"Merging {len(coverage_files)} files with verilator_coverage")
-            
+            # Build command: verilator_coverage --write merged.dat file1.dat file2.dat
             cmd = [
                 str(tool_path),
-                "--write", str(merged_path),
-                *[str(f) for f in coverage_files]
-            ]
+                '--write', str(merged_path)
+            ] + [str(f) for f in coverage_files]
             
-            proc_result = self.run_external_tool(cmd, timeout=120)
+            # Run merge
+            result = self.run_external_tool(cmd, timeout=120)
             
-            if proc_result.returncode != 0:
-                result.add_error(f"verilator_coverage merge failed: {proc_result.stderr}")
-                merged_path.unlink(missing_ok=True)
+            if result.returncode != 0:
+                self.logger.debug(f"verilator_coverage merge failed: {result.stderr}")
                 return None
             
-            # Verify merged file was created
             if not merged_path.exists() or merged_path.stat().st_size == 0:
-                result.add_error("Merged file not created or is empty")
-                merged_path.unlink(missing_ok=True)
+                self.logger.debug("verilator_coverage merge produced no output")
                 return None
             
             # Parse the merged file
             parse_result = self.parse_file(merged_path)
             
-            if not parse_result.success:
-                result.add_error("Failed to parse merged file")
-                result.errors.extend(parse_result.errors)
-                merged_path.unlink(missing_ok=True)
-                return None
+            merge_result = MergeResult(
+                success=parse_result.success,
+                merged_coverage=parse_result.coverage,
+                merged_file_path=merged_path,
+                errors=parse_result.errors,
+                warnings=parse_result.warnings,
+                used_external_tool=True
+            )
             
-            result.merged_coverage = parse_result.coverage
-            result.merged_file_path = merged_path
-            result.metadata["merged_file"] = str(merged_path)
-            result.metadata["num_files_merged"] = len(coverage_files)
+            return merge_result
         
         except Exception as e:
-            self.logger.error(f"Tool merge failed: {e}", exc_info=True)
-            result.add_error(f"Merge failed: {e}")
+            self.logger.debug(f"Tool-based merging failed: {e}")
+            if merged_path.exists():
+                merged_path.unlink()
+            return None
+    
+    # =========================================================================
+    # ADDITIONAL METHODS
+    # =========================================================================
+    
+    def get_verilator_version(self) -> Optional[str]:
+        """
+        Get Verilator version from verilator_coverage tool
+        
+        Returns:
+            Version string, or None if tool unavailable
+        """
+        tool_path = self._get_external_tool_path()
+        if not tool_path:
             return None
         
-        return result
-    
-    # =========================================================================
-    # HELPER METHODS
-    # =========================================================================
-    
-    def _is_verilator_info_file(self, file_path: Path) -> bool:
-        """
-        Check if .info file is from Verilator
-        
-        Args:
-            file_path: Path to .info file
-        
-        Returns:
-            True if file is Verilator-generated
-        """
         try:
-            # Check first few lines for Verilator markers
-            with open(file_path, 'r') as f:
-                for i, line in enumerate(f):
-                    if i > 10:  # Check first 10 lines
-                        break
-                    if 'verilator' in line.lower() or 'vlcov' in line.lower():
-                        return True
-        except:
-            pass
-        
-        return False
-    
-    def _get_verilator_version(self, tool_path: Path) -> Optional[str]:
-        """
-        Get Verilator version
-        
-        Args:
-            tool_path: Path to verilator_coverage tool
-        
-        Returns:
-            Version string, or None if unable to determine
-        """
-        try:
-            result = self.run_external_tool([str(tool_path), "--version"], timeout=5)
+            result = self.run_external_tool(
+                [str(tool_path), '--version'],
+                timeout=5
+            )
             
             if result.returncode == 0:
-                # Parse version from output
-                # Example: "Verilator Coverage 5.006"
-                match = re.search(r'(\d+\.\d+)', result.stdout)
+                # Extract version from output
+                # Format: "Verilator 5.006 2023-01-15"
+                match = re.search(r'Verilator\s+(\S+)', result.stdout)
                 if match:
                     return match.group(1)
         
-        except Exception as e:
-            self.logger.debug(f"Failed to get Verilator version: {e}")
+        except Exception:
+            pass
         
         return None
     
-    def _parse_annotated_output(
-        self,
-        annotate_dir: Path,
-        source_file: Path
-    ) -> Optional[ModuleCoverage]:
+    def export_to_lcov(self, dat_file: Path, lcov_output: Path) -> bool:
         """
-        Parse verilator_coverage --annotate output
+        Export Verilator .dat to LCOV format
         
-        The annotate directory contains:
-        - annotated.txt: Summary file
-        - <source_file>.v: Annotated source files
+        Useful for integration with other tools that expect LCOV.
         
         Args:
-            annotate_dir: Directory containing annotated output
-            source_file: Original coverage file (for module name)
+            dat_file: Input .dat file
+            lcov_output: Output .info file path
         
         Returns:
-            ModuleCoverage if successful, None otherwise
-        """
-        module = ModuleCoverage(
-            module_name=source_file.stem,
-            source_files=[]
-        )
-        
-        # Look for annotated files
-        annotated_files = list(annotate_dir.glob("*.v")) + list(annotate_dir.glob("*.sv"))
-        
-        if not annotated_files:
-            self.logger.warning("No annotated files found")
-            return None
-        
-        # Parse each annotated file
-        for ann_file in annotated_files:
-            file_cov = self._parse_annotated_file(ann_file)
-            if file_cov:
-                module.files[file_cov.file_path] = file_cov
-                if file_cov.file_path not in module.source_files:
-                    module.source_files.append(file_cov.file_path)
-        
-        return module if module.files else None
-    
-    def _parse_annotated_file(self, ann_file: Path) -> Optional[FileCoverage]:
-        """
-        Parse a single annotated source file
-        
-        Verilator annotated format:
-        %000001  <hit_count>  <line>
-        
-        Args:
-            ann_file: Path to annotated file
-        
-        Returns:
-            FileCoverage if successful, None otherwise
-        """
-        # Extract original source file name (remove .v/.sv suffix if doubled)
-        source_name = ann_file.name
-        
-        file_cov = FileCoverage(file_path=source_name)
-        
-        try:
-            lines = self.read_file_lines(ann_file)
-            
-            for line_num, line in enumerate(lines, 1):
-                # Annotated lines start with coverage count
-                # Format: %<line_number> <hit_count> <source_line>
-                match = re.match(r'%(\d+)\s+(\d+)\s+(.*)', line)
-                if match:
-                    line_number = int(match.group(1))
-                    hit_count = int(match.group(2))
-                    source_line = match.group(3)
-                    
-                    file_cov.lines[line_number] = LineCoverageData(
-                        line_number=line_number,
-                        hit_count=hit_count,
-                        source_line=source_line.strip()
-                    )
-        
-        except Exception as e:
-            self.logger.error(f"Failed to parse annotated file {ann_file}: {e}")
-            return None
-        
-        return file_cov if file_cov.lines else None
-    
-    def _parse_line_data(
-        self,
-        data: str,
-        file_cov: FileCoverage,
-        result: ParseResult
-    ) -> None:
-        """
-        Parse DA (Data/Line coverage) record
-        
-        Format: DA:<line_number>,<hit_count>[,<checksum>]
-        Example: DA:10,1000
-        
-        Args:
-            data: Record data after "DA:"
-            file_cov: FileCoverage to add line to
-            result: ParseResult for error reporting
-        """
-        try:
-            parts = data.split(',')
-            if len(parts) < 2:
-                result.add_warning(f"Invalid DA record: {data}")
-                return
-            
-            line_number = int(parts[0])
-            hit_count = int(parts[1])
-            
-            file_cov.lines[line_number] = LineCoverageData(
-                line_number=line_number,
-                hit_count=hit_count
-            )
-        
-        except ValueError as e:
-            result.add_warning(f"Failed to parse DA record '{data}': {e}")
-    
-    def _parse_branch_data(
-        self,
-        data: str,
-        file_cov: FileCoverage,
-        result: ParseResult
-    ) -> None:
-        """
-        Parse BRDA (Branch Data) record
-        
-        Format: BRDA:<line>,<block>,<branch>,<taken>
-        Example: BRDA:15,0,0,850
-                BRDA:15,0,1,150
-        
-        Args:
-            data: Record data after "BRDA:"
-            file_cov: FileCoverage to add branch to
-            result: ParseResult for error reporting
-        """
-        try:
-            parts = data.split(',')
-            if len(parts) < 4:
-                result.add_warning(f"Invalid BRDA record: {data}")
-                return
-            
-            line_number = int(parts[0])
-            block_number = int(parts[1])
-            branch_number = int(parts[2])
-            taken = parts[3]
-            
-            # Handle "-" for never taken
-            taken_count = 0 if taken == '-' else int(taken)
-            
-            # For Verilator, we get separate records for each branch direction
-            # We need to combine them
-            # Look for existing branch entry
-            existing_branch = None
-            for branch in file_cov.branches:
-                if (branch.line_number == line_number and
-                    branch.block_number == block_number and
-                    branch.branch_number == branch_number):
-                    existing_branch = branch
-                    break
-            
-            if existing_branch:
-                # This is the alternate direction
-                existing_branch.not_taken_count = taken_count
-            else:
-                # Create new branch entry
-                file_cov.branches.append(BranchData(
-                    line_number=line_number,
-                    block_number=block_number,
-                    branch_number=branch_number,
-                    taken_count=taken_count,
-                    not_taken_count=0  # Will be filled by next record
-                ))
-        
-        except ValueError as e:
-            result.add_warning(f"Failed to parse BRDA record '{data}': {e}")
-    
-    # =========================================================================
-    # VERILATOR-SPECIFIC FEATURES
-    # =========================================================================
-    
-    def extract_toggle_coverage(self, file_path: Path) -> Dict[str, ToggleData]:
-        """
-        Extract toggle coverage from Verilator coverage file
-        
-        Toggle coverage requires special processing with verilator_coverage.
-        
-        Args:
-            file_path: Path to coverage.dat file
-        
-        Returns:
-            Dictionary of signal_name -> ToggleData
+            True if successful
         """
         tool_path = self._get_external_tool_path()
         if not tool_path:
-            self.logger.warning("Cannot extract toggle coverage without verilator_coverage tool")
-            return {}
-        
-        toggles: Dict[str, ToggleData] = {}
+            self.logger.warning("Cannot export to LCOV: verilator_coverage not available")
+            return False
         
         try:
-            # Run verilator_coverage with toggle report
+            result = self.run_external_tool(
+                [
+                    str(tool_path),
+                    '--write-info', str(lcov_output),
+                    str(dat_file)
+                ],
+                timeout=60
+            )
+            
+            return result.returncode == 0 and lcov_output.exists()
+        
+        except Exception as e:
+            self.logger.error(f"Failed to export to LCOV: {e}")
+            return False
+    
+    def annotate_coverage(
+        self,
+        dat_file: Path,
+        output_dir: Path,
+        annotate_all: bool = True
+    ) -> bool:
+        """
+        Generate annotated source files with coverage
+        
+        Uses: verilator_coverage --annotate output_dir input.dat
+        
+        Args:
+            dat_file: Input .dat file
+            output_dir: Output directory for annotated files
+            annotate_all: Include all source files (not just covered)
+        
+        Returns:
+            True if successful
+        """
+        tool_path = self._get_external_tool_path()
+        if not tool_path:
+            self.logger.warning("Cannot annotate: verilator_coverage not available")
+            return False
+        
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
             cmd = [
                 str(tool_path),
-                "--rank",
-                "--annotate-min", "1",
-                str(file_path)
+                '--annotate', str(output_dir)
             ]
             
-            result = self.run_external_tool(cmd, timeout=60)
+            if annotate_all:
+                cmd.append('--annotate-all')
             
-            if result.returncode == 0:
-                # Parse toggle information from output
-                # This is format-specific and may need adjustment
-                # based on actual Verilator output
-                pass
+            cmd.append(str(dat_file))
+            
+            result = self.run_external_tool(cmd, timeout=120)
+            
+            return result.returncode == 0
         
         except Exception as e:
-            self.logger.error(f"Failed to extract toggle coverage: {e}")
-        
-        return toggles
+            self.logger.error(f"Failed to annotate coverage: {e}")
+            return False
     
-    def get_coverage_summary(self, file_path: Path) -> Dict[str, Any]:
+    def validate_dat_file(self, file_path: Path) -> Tuple[bool, List[str]]:
         """
-        Get coverage summary using verilator_coverage
+        Validate Verilator .dat file integrity
+        
+        Checks:
+        - File format
+        - Has required sections
+        - No obvious corruption
         
         Args:
-            file_path: Path to coverage.dat file
+            file_path: Path to .dat file
         
         Returns:
-            Dictionary with coverage summary statistics
+            Tuple of (is_valid, error_messages)
         """
-        tool_path = self._get_external_tool_path()
-        if not tool_path:
-            return {}
+        errors = []
         
-        summary = {}
+        # Basic validation from base class
+        if not self.validate_file(file_path):
+            return False, self.errors
         
+        # Check for required sections
         try:
-            cmd = [str(tool_path), "--rank", str(file_path)]
-            result = self.run_external_tool(cmd, timeout=30)
+            lines = self.read_file_lines(file_path)
             
-            if result.returncode == 0:
-                # Parse summary from output
-                # Example output:
-                # Lines: 85.7% (18/21)
-                # Branches: 100.0% (4/4)
-                
-                for line in result.stdout.split('\n'):
-                    if 'Lines:' in line:
-                        match = re.search(r'(\d+\.\d+)%\s+\((\d+)/(\d+)\)', line)
-                        if match:
-                            summary['line_percent'] = float(match.group(1))
-                            summary['lines_hit'] = int(match.group(2))
-                            summary['lines_total'] = int(match.group(3))
-                    
-                    elif 'Branches:' in line:
-                        match = re.search(r'(\d+\.\d+)%\s+\((\d+)/(\d+)\)', line)
-                        if match:
-                            summary['branch_percent'] = float(match.group(1))
-                            summary['branches_hit'] = int(match.group(2))
-                            summary['branches_total'] = int(match.group(3))
+            has_source_file = False
+            has_data = False
+            
+            for line in lines[:100]:  # Check first 100 lines
+                if line.startswith('SF:'):
+                    has_source_file = True
+                if line.startswith('DA:') or line.startswith('BRDA:'):
+                    has_data = True
+            
+            if not has_source_file:
+                errors.append("No source file (SF:) records found")
+            
+            if not has_data:
+                errors.append("No coverage data (DA:/BRDA:) records found")
         
         except Exception as e:
-            self.logger.error(f"Failed to get coverage summary: {e}")
+            errors.append(f"Error reading file: {e}")
         
-        return summary
+        return len(errors) == 0, errors
 
 
 # =============================================================================
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
-def parse_verilator_coverage(file_path: Path) -> ParseResult:
+def create_verilator_parser(config: Optional[ParserConfig] = None) -> VerilatorParser:
     """
-    Convenience function to parse a Verilator coverage file
+    Create a VerilatorParser instance
     
     Args:
-        file_path: Path to coverage.dat file
+        config: Parser configuration (optional)
     
     Returns:
-        ParseResult with coverage data
-    
-    Example:
-        >>> result = parse_verilator_coverage(Path("coverage.dat"))
-        >>> if result.success:
-        ...     print(f"Coverage: {result.coverage.line_coverage_percent}%")
+        VerilatorParser instance
     """
-    parser = VerilatorParser()
-    return parser.parse_file(file_path)
+    return VerilatorParser(config)
 
 
-def merge_verilator_coverage(coverage_files: List[Path]) -> MergeResult:
+def is_verilator_coverage_available() -> bool:
     """
-    Convenience function to merge Verilator coverage files
-    
-    Args:
-        coverage_files: List of .dat files to merge
+    Check if verilator_coverage tool is available
     
     Returns:
-        MergeResult with merged coverage data
-    
-    Example:
-        >>> files = [Path("test1.dat"), Path("test2.dat")]
-        >>> result = merge_verilator_coverage(files)
-        >>> if result.success:
-        ...     print(f"Merged coverage: {result.merged_coverage.line_coverage_percent}%")
+        True if tool is in PATH
     """
     parser = VerilatorParser()
-    return parser.merge_coverage(coverage_files)
+    return parser._get_external_tool_path() is not None
+
+
+def get_verilator_coverage_version() -> Optional[str]:
+    """
+    Get verilator_coverage version
+    
+    Returns:
+        Version string, or None if not available
+    """
+    parser = VerilatorParser()
+    return parser.get_verilator_version()
