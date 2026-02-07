@@ -22,6 +22,19 @@ from .base import (
     MergeResult,
 )
 
+from .verilator_parser import (
+    VerilatorParser,
+    create_verilator_parser,
+    is_verilator_coverage_available,
+    get_verilator_coverage_version,
+)
+from .lcov_parser import (
+    LCOVParser,
+    create_lcov_parser,
+    is_lcov_available,
+    get_lcov_version,
+)
+
 # Parsers will be imported as they're implemented
 # from .verilator_parser import VerilatorParser
 # from .lcov_parser import LCOVParser
@@ -33,6 +46,14 @@ __all__ = [
     "BaseParser",
     "ParseResult",
     "MergeResult",
+    "VerilatorParser",
+    "create_verilator_parser",
+    "is_verilator_coverage_available",
+    "get_verilator_coverage_version",
+    "LCOVParser",
+    "create_lcov_parser",
+    "is_lcov_available",
+    "get_lcov_version",
     
     # Parsers (to be uncommented as implemented)
     # "VerilatorParser",
