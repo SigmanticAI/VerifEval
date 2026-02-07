@@ -129,6 +129,12 @@ from .verilator_parser import (
 
 # Placeholder imports - will be uncommented once analyzers are implemented
 # from .analyzer import CoverageAnalyzer
+from .analyzer import (
+    CoverageAnalyzer,
+    AnalysisResult,
+    analyze_coverage,
+    quick_analyze,
+)
 
 
 # =============================================================================
@@ -206,6 +212,10 @@ __all__ = [
     "create_verilator_parser",
     "is_verilator_coverage_available",
     "get_verilator_coverage_version",
+    "CoverageAnalyzer",
+    "AnalysisResult",
+    "analyze_coverage",
+    "quick_analyze",
     
     # Configuration (to be uncommented)
     # "CoverageThresholds",
