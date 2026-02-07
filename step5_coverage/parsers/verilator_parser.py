@@ -57,6 +57,23 @@ RECORD_TYPES = {
     'end_of_record': 'eor',    # End of record
 }
 
+LCOV_RECORD_TYPES = {
+    'TN': 'test_name',         # Test name
+    'SF': 'source_file',       # Source file path
+    'FN': 'function_name',     # Function definition (line, name)
+    'FNDA': 'function_data',   # Function execution count
+    'FNF': 'functions_found',  # Total functions
+    'FNH': 'functions_hit',    # Functions executed
+    'DA': 'line_data',         # Line coverage (line, hits)
+    'LF': 'lines_found',       # Total lines
+    'LH': 'lines_hit',         # Lines executed
+    'BRDA': 'branch_data',     # Branch coverage (line, block, branch, taken)
+    'BRF': 'branches_found',   # Total branches
+    'BRH': 'branches_hit',     # Branches taken
+    'end_of_record': 'eor',    # End of record marker
+}
+
+
 
 # =============================================================================
 # VERILATOR PARSER
