@@ -8,13 +8,17 @@ Supports two scoring tiers:
 - Tier 2 (Professional): Questa-based functional coverage, assertions, UVM
 
 Quick Start:
-    >>> from step7_score import ScoreAnalyzer
-    >>> from step7_score.config import ScoreCalculationConfig
+    >>> from step7_score import TestbenchAnalyzer, ScoreCalculationConfig
+    >>> from pathlib import Path
     >>> 
-    >>> config = ScoreCalculationConfig.from_yaml(".tbeval.yaml")
-    >>> analyzer = ScoreAnalyzer(config)
-    >>> result = analyzer.analyze()
-    >>> print(f"Score: {result.score.percentage:.2f}%")
+    >>> config = ScoreCalculationConfig.from_yaml(Path(".tbeval.yaml"))
+    >>> analyzer = TestbenchAnalyzer(config)
+    >>> result = analyzer.run(submission_id="student_42_alu")
+    >>> print(f"Score: {result.report.score.percentage:.2f}%")
+
+One-liner API:
+    >>> from step7_score import analyze
+    >>> report = analyze(Path("./submission"))
 
 Author: TB Eval Team
 Version: 0.1.0
@@ -28,6 +32,14 @@ __license__ = "MIT"
 # =============================================================================
 # CORE IMPORTS
 # =============================================================================
+
+# Main orchestrator
+from .analyzer import (
+    TestbenchAnalyzer,
+    AnalysisResult,
+    analyze,
+    analyze_from_config,
+)
 
 # Models - Data structures
 from .models import (
@@ -64,9 +76,6 @@ from .config import (
     QuestaConfig,
     create_default_config_file,
 )
-
-# Main analyzer (will be implemented)
-# from .analyzer import ScoreAnalyzer  # TODO: Implement
 
 # =============================================================================
 # SCORERS
@@ -161,7 +170,10 @@ from .exporters import (
     export_junit,
     export_csv,
     export_pdf,
+    export_all,
     is_pdf_export_available,
+    get_available_formats,
+    BatchExporter,
 )
 
 # =============================================================================
@@ -174,9 +186,20 @@ __all__ = [
     "__author__",
     "__license__",
     
-    # Core classes
-    # "ScoreAnalyzer",  # TODO: Uncomment when implemented
+    # Core orchestrator
+    "TestbenchAnalyzer",
+    "AnalysisResult",
+    "analyze",
+    "analyze_from_config",
+    
+    # Configuration
     "ScoreCalculationConfig",
+    "Tier1Weights",
+    "Tier2Weights",
+    "GradeThresholds",
+    "ExportConfig",
+    "QuestaConfig",
+    "create_default_config_file",
     
     # Models - Core
     "ComponentScore",
@@ -198,20 +221,17 @@ __all__ = [
     "AssertionCoverageMetrics",
     "UVMConformanceMetrics",
     
-    # Configuration
-    "Tier1Weights",
-    "Tier2Weights",
-    "GradeThresholds",
-    "ExportConfig",
-    "QuestaConfig",
-    "create_default_config_file",
-    
     # Tier 1 Scorers
     "CoverageScorer",
+    "CoverageScoringConfig",
     "QualityScorer",
+    "QualityScoringConfig",
     "EfficiencyScorer",
+    "EfficiencyScoringConfig",
     "TestPassRateScorer",
+    "PassRateScoringConfig",
     "BehavioralScorer",
+    "BehavioralScoringConfig",
     
     # Tier Aggregators
     "Tier1Scorer",
@@ -223,14 +243,19 @@ __all__ = [
     
     # Tier 2 Scorers
     "StabilityScorer",
+    "StabilityScoringConfig",
+    "FunctionalCoverageParser",
     "FunctionalCoverageScorer",
+    "AssertionCoverageParser",
     "AssertionCoverageScorer",
+    "UVMAnalyzer",
     "UVMConformanceScorer",
     
     # Questa
     "check_questa_availability",
     "is_questa_available",
     "is_tier2_available",
+    "print_questa_status",
     
     # Convenience scoring functions
     "score_coverage",
@@ -248,7 +273,10 @@ __all__ = [
     "export_junit",
     "export_csv",
     "export_pdf",
+    "export_all",
     "is_pdf_export_available",
+    "get_available_formats",
+    "BatchExporter",
 ]
 
 # =============================================================================
@@ -304,24 +332,20 @@ def print_info() -> None:
 # MODULE INITIALIZATION
 # =============================================================================
 
-# Suppress specific warnings
 import warnings
-warnings.filterwarnings('ignore', message='.*reportlab.*', category=UserWarning)
-
-# Check for critical dependencies
 import importlib.util
 
+# Check for optional dependencies
 _MISSING_DEPS = []
 
-# Check for reportlab (optional)
 if importlib.util.find_spec("reportlab") is None:
     _MISSING_DEPS.append("reportlab")
 
-# Warn about missing optional dependencies
-if _MISSING_DEPS and not any('SPHINX' in k for k in globals()):
+if _MISSING_DEPS:
     warnings.warn(
         f"Optional dependencies not available: {', '.join(_MISSING_DEPS)}. "
         f"Some features will be disabled. "
         f"Install with: pip install {' '.join(_MISSING_DEPS)}",
-        ImportWarning
+        ImportWarning,
+        stacklevel=2,
     )
