@@ -21,7 +21,7 @@ Version: 0.1.0
 """
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, List
 import logging
 
 from ..models import FinalReport
@@ -62,6 +62,7 @@ try:
 except ImportError:
     PDF_AVAILABLE = False
     REPORTLAB_AVAILABLE = False
+    PDFExporter = None  # type: ignore[misc,assignment]
     logger.debug("PDF export not available (reportlab not installed)")
 
 # =============================================================================
@@ -85,6 +86,10 @@ __all__ = [
     # Utilities
     "is_pdf_export_available",
     "get_available_formats",
+    "print_export_info",
+    
+    # Batch
+    "BatchExporter",
 ]
 
 # =============================================================================
@@ -166,7 +171,7 @@ def export_pdf(
         )
     
     from reportlab.lib.pagesizes import letter, A4
-    page = A4 if page_size.lower() == "a4" else letter
+    page = A4 if page_size and page_size.lower() == "a4" else letter
     
     _export_pdf(report, output_path, page_size=page)
 
@@ -174,9 +179,9 @@ def export_pdf(
 def export_all(
     report: FinalReport,
     output_dir: Path,
-    formats: Optional[list] = None,
+    formats: Optional[List[str]] = None,
     base_name: str = "report"
-) -> dict:
+) -> Dict[str, Path]:
     """
     Export report in multiple formats
     
@@ -203,7 +208,7 @@ def export_all(
     if formats is None:
         formats = get_available_formats()
     
-    results = {}
+    results: Dict[str, Path] = {}
     
     # JSON (built into FinalReport)
     if "json" in formats:
@@ -277,7 +282,7 @@ def is_pdf_export_available() -> bool:
     return PDF_AVAILABLE and REPORTLAB_AVAILABLE
 
 
-def get_available_formats() -> list:
+def get_available_formats() -> List[str]:
     """
     Get list of available export formats
     
@@ -320,9 +325,9 @@ class BatchExporter:
     
     Example:
         >>> exporter = BatchExporter(output_dir=Path("reports"))
-        >>> for report in reports:
-        ...     exporter.add(report, formats=["html", "json"])
-        >>> exporter.export_all()
+        >>> exporter.add(report1)
+        >>> exporter.add(report2, formats=["html", "json"])
+        >>> results = exporter.export_all()
     """
     
     def __init__(self, output_dir: Path):
@@ -333,12 +338,12 @@ class BatchExporter:
             output_dir: Base output directory
         """
         self.output_dir = Path(output_dir)
-        self.reports = []
+        self._queue: List[Dict] = []
     
     def add(
         self,
         report: FinalReport,
-        formats: Optional[list] = None,
+        formats: Optional[List[str]] = None,
         subdir: Optional[str] = None
     ) -> None:
         """
@@ -346,16 +351,68 @@ class BatchExporter:
         
         Args:
             report: Report to export
-            formats: Export formats
+            formats: Export formats (default: all available)
             subdir: Subdirectory name (default: submission_id)
         """
         if subdir is None:
             subdir = report.submission_id
         
-        self.reports.append({
+        self._queue.append({
             "report": report,
             "formats": formats,
             "subdir": subdir,
         })
     
-    def export_all(self) -> dict:
+    def export_all(self) -> Dict[str, Dict[str, Path]]:
+        """
+        Export all queued reports
+        
+        Returns:
+            Nested dict: {submission_id: {format: path}}
+        
+        Example:
+            >>> results = exporter.export_all()
+            >>> results["student_42"]["html"]
+            PosixPath('reports/student_42/report.html')
+        """
+        all_results: Dict[str, Dict[str, Path]] = {}
+        
+        for item in self._queue:
+            report: FinalReport = item["report"]
+            formats: Optional[List[str]] = item["formats"]
+            subdir: str = item["subdir"]
+            
+            report_output_dir = self.output_dir / subdir
+            
+            try:
+                results = export_all(
+                    report=report,
+                    output_dir=report_output_dir,
+                    formats=formats,
+                )
+                all_results[subdir] = results
+                logger.info(
+                    f"Batch export '{subdir}': "
+                    f"{len(results)} format(s)"
+                )
+            except Exception as exc:
+                logger.error(
+                    f"Batch export '{subdir}' failed: {exc}"
+                )
+                all_results[subdir] = {}
+        
+        logger.info(
+            f"Batch export complete: {len(all_results)} "
+            f"submission(s) processed"
+        )
+        
+        return all_results
+    
+    def clear(self) -> None:
+        """Clear the export queue"""
+        self._queue.clear()
+    
+    @property
+    def pending_count(self) -> int:
+        """Number of reports queued for export"""
+        return len(self._queue)
