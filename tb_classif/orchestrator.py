@@ -13,11 +13,11 @@ from .models import (
 from .config import ConfigManager
 from .discovery.file_finder import FileFinder
 from .discovery.manifest_parser import ManifestParser
-from .detectors.cocotb_detector import CocoTBDetector
-from .detectors.pyuvm_detector import PyUVMDetector
-from .detectors.uvm_sv_detector import UVMSVDetector
-from .detectors.vunit_detector import VUnitDetector
-from .detectors.hdl_detector import HDLDetector
+from .detectors.cocotb_detect import CocoTBDetector
+from .detectors.pyuvm_detect import PyUVMDetector
+from .detectors.uvm_sv_detect import UVMSVDetector
+from .detectors.vunit_detect import VUnitDetector
+from .detectors.hdl_detect import HDLDetector
 from .quality_gate.verible_linter import VeribleLinter
 from .quality_gate.ghdl_checker import GHDLChecker
 from .routing.engine import RoutingEngine

@@ -186,16 +186,17 @@ class RoutingEngine:
         # UVM-SV detected
         if detection.tb_type == TBType.UVM_SV:
             if simulator == Simulator.QUESTA:
-            recommendations.append(
-                "✅ UVM SystemVerilog detected. Questa simulator will be used."
-            )
-             recommendations.append(
-                "💡 Ensure Questa license is properly configured in .tbeval.yaml"
+                recommendations.append(
+                    "✅ UVM SystemVerilog detected. Questa simulator will be used."
+                )
+                recommendations.append(
+                    "💡 Ensure Questa license is properly configured in .tbeval.yaml"
+                )
             else:
-            # ← UPDATED: Questa not configured
-            recommendations.append(
-                "⚠️  UVM SystemVerilog detected but Questa not configured."
-            )
+                # ← UPDATED: Questa not configured
+                recommendations.append(
+                    "⚠️  UVM SystemVerilog detected but Questa not configured."
+                )
             recommendations.append(
                 "💡 To run UVM testbenches, configure Questa in .tbeval.yaml:"
             )

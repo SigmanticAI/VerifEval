@@ -1,0 +1,56 @@
+{
+  "tb_type": "cocotb",
+  "track": "A",
+  "entrypoint": "test_adder.py",
+  "chosen_simulator": "verilator",
+  "language": "python",
+  "confidence": 0.855,
+  "detection_method": "pattern_matching",
+  "dut_files": [
+    "adder.v"
+  ],
+  "tb_files": [
+    "test_adder.py"
+  ],
+  "top_module": null,
+  "quality_gate_passed": false,
+  "quality_metrics": {
+    "status": "skipped",
+    "linter": "verible",
+    "timestamp": "2026-02-10T06:28:24Z",
+    "total_files": 1,
+    "files_checked": 0,
+    "total_violations": 0,
+    "critical_errors": 1,
+    "warnings": 0,
+    "style_issues": 0,
+    "files": [
+      {
+        "path": "N/A",
+        "status": "error",
+        "violations": [
+          {
+            "file": "",
+            "line": 0,
+            "column": 0,
+            "severity": "error",
+            "rule": "tool_missing",
+            "message": "Verible linter not found. Install: https://github.com/chipsalliance/verible",
+            "suggestion": null
+          }
+        ]
+      }
+    ],
+    "violations_by_category": {},
+    "execution_time_ms": 0.0
+  },
+  "recommendations": [],
+  "warnings": [
+    "No manifest file found"
+  ],
+  "errors": [
+    "\u274c 1 critical syntax/lint errors detected. Fix errors before proceeding."
+  ],
+  "timestamp": "2026-02-09T22:28:24.197024",
+  "framework_version": "1.0.0"
+}

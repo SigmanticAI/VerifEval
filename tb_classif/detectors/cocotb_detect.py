@@ -4,7 +4,7 @@ CocoTB testbench detector
 from pathlib import Path
 from typing import Optional
 
-from .base import BaseDetector
+from .base_detect import BaseDetector
 from ..models import DetectionResult, TBType, Language
 
 

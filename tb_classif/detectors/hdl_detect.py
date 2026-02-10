@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 import re
 
-from .base import BaseDetector
+from .base_detect import BaseDetector
 from ..models import DetectionResult, TBType, Language
 
 

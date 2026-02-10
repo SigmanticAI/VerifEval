@@ -26,12 +26,12 @@ Usage:
         print(f"Detected: {result.tb_type}")
 """
 
-from .base import BaseDetector
-from .cocotb_detector import CocoTBDetector
-from .pyuvm_detector import PyUVMDetector
-from .uvm_sv_detector import UVMSVDetector
-from .vunit_detector import VUnitDetector
-from .hdl_detector import HDLDetector
+from .base_detect import BaseDetector
+from .cocotb_detect import CocoTBDetector
+from .pyuvm_detect import PyUVMDetector
+from .uvm_sv_detect import UVMSVDetector
+from .vunit_detect import VUnitDetector
+from .hdl_detect import HDLDetector
 
 __all__ = [
     "BaseDetector",

@@ -1,6 +1,7 @@
 """
 Simulator selection logic
 """
+import os
 import subprocess
 from typing import Optional, List, Dict
 from ..models import TBType, Simulator, Language
@@ -143,7 +144,7 @@ class SimulatorSelector:
         command_map = {
             Simulator.VERILATOR: 'verilator',
             Simulator.ICARUS: 'iverilog',
-            Simulator.GHDL: 'ghdl'
+            Simulator.GHDL: 'ghdl',
             Simulator.QUESTA: 'vsim',  # ← NEW
         }
         

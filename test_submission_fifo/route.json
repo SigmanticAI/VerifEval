@@ -1,0 +1,67 @@
+{
+  "tb_type": "uvm_sv",
+  "track": "B",
+  "entrypoint": "tb/tb_top.sv",
+  "chosen_simulator": "commercial_required",
+  "language": "systemverilog",
+  "confidence": 0.855,
+  "detection_method": "pattern_matching",
+  "dut_files": [
+    "assertions/sync_fifo_assertions.sv",
+    "coverage/sync_fifo_coverage.sv",
+    "sync_fifo.sv"
+  ],
+  "tb_files": [
+    "tb/agents/sync_fifo_agent.sv",
+    "tb/agents/sync_fifo_if.sv",
+    "tb/env/env.sv",
+    "tb/tb_top.sv",
+    "tb/tests/tests.sv"
+  ],
+  "top_module": null,
+  "quality_gate_passed": false,
+  "quality_metrics": {
+    "status": "skipped",
+    "linter": "verible",
+    "timestamp": "2026-02-10T06:23:07Z",
+    "total_files": 8,
+    "files_checked": 0,
+    "total_violations": 0,
+    "critical_errors": 1,
+    "warnings": 0,
+    "style_issues": 0,
+    "files": [
+      {
+        "path": "N/A",
+        "status": "error",
+        "violations": [
+          {
+            "file": "",
+            "line": 0,
+            "column": 0,
+            "severity": "error",
+            "rule": "tool_missing",
+            "message": "Verible linter not found. Install: https://github.com/chipsalliance/verible",
+            "suggestion": null
+          }
+        ]
+      }
+    ],
+    "violations_by_category": {},
+    "execution_time_ms": 0.0
+  },
+  "recommendations": [
+    "\u26a0\ufe0f  UVM SystemVerilog detected but Questa not configured.",
+    "\ud83d\udca1 To run UVM testbenches, configure Questa in .tbeval.yaml:",
+    "   preferred_simulator: 'questa'",
+    "\ud83d\udca1 Alternative: Migrate to pyuvm for open-source compatibility: https://github.com/pyuvm/pyuvm"
+  ],
+  "warnings": [
+    "No manifest file found"
+  ],
+  "errors": [
+    "\u274c 1 critical syntax/lint errors detected. Fix errors before proceeding."
+  ],
+  "timestamp": "2026-02-09T22:23:07.687232",
+  "framework_version": "1.0.0"
+}
