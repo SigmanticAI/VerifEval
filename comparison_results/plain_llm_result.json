@@ -1,0 +1,100 @@
+{
+  "design_name": "Plain LLM",
+  "total_score": 48.74,
+  "dimension_scores": {
+    "specification_extraction": 19.3,
+    "verification_planning": 0.0,
+    "code_generation": 23.0,
+    "verification_completeness": 4.0
+  },
+  "metrics": {
+    "specification_extraction": {
+      "module_detection": {
+        "score": 5.0,
+        "max": 5,
+        "found": [
+          "sync_fifo"
+        ]
+      },
+      "port_identification": {
+        "score": 5.0,
+        "max": 5,
+        "match_rate": 1.0
+      },
+      "parameter_detection": {
+        "score": 3.0,
+        "max": 3,
+        "match_rate": 1.0
+      },
+      "requirements_extraction": {
+        "score": 6.3,
+        "max": 7,
+        "total_reqs": 12,
+        "critical_found": 4
+      }
+    },
+    "verification_planning": {
+      "test_coverage": {
+        "score": 0.0,
+        "max": 10,
+        "total_tests": 0,
+        "categories": 0
+      },
+      "assertion_planning": {
+        "score": 0.0,
+        "max": 8,
+        "total_assertions": 0,
+        "critical_found": 0
+      },
+      "coverage_strategy": {
+        "score": 0.0,
+        "max": 7,
+        "covergroups": 0
+      }
+    },
+    "code_generation": {
+      "compilability": {
+        "score": 10.0,
+        "max": 10,
+        "files": 6,
+        "compilable": 6
+      },
+      "uvm_compliance": {
+        "score": 5.0,
+        "max": 5,
+        "found": [
+          "interface",
+          "agent",
+          "sequence",
+          "test"
+        ]
+      },
+      "code_quality": {
+        "score": 4.0,
+        "max": 5
+      },
+      "interface_correctness": {
+        "score": 4.0,
+        "max": 5
+      }
+    },
+    "verification_completeness": {
+      "requirement_coverage": {
+        "score": 0.0,
+        "max": 7
+      },
+      "assertion_coverage": {
+        "score": 0.0,
+        "max": 6
+      },
+      "functional_coverage": {
+        "score": 0.0,
+        "max": 6
+      },
+      "corner_case_coverage": {
+        "score": 4.0,
+        "max": 6
+      }
+    }
+  }
+}

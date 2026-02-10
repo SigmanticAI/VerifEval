@@ -1,0 +1,224 @@
+{
+  "design_name": "sync_fifo",
+  "description": "A synchronous FIFO (First-In-First-Out) buffer with configurable data width and depth that provides standard FIFO operations with status flags",
+  "modules": [
+    {
+      "name": "sync_fifo",
+      "description": "Synchronous FIFO with parameterizable depth and data width",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8,
+          "description": "Width of data bus in bits"
+        },
+        {
+          "name": "DEPTH",
+          "type": "integer",
+          "default": 16,
+          "description": "FIFO depth in number of entries"
+        },
+        {
+          "name": "ADDR_WIDTH",
+          "type": "integer",
+          "default": "$clog2(DEPTH)",
+          "description": "Address width for internal pointers"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1,
+          "description": "System clock"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1,
+          "description": "Active-low asynchronous reset"
+        },
+        {
+          "name": "wr_en",
+          "direction": "input",
+          "width": 1,
+          "description": "Write enable signal"
+        },
+        {
+          "name": "rd_en",
+          "direction": "input",
+          "width": 1,
+          "description": "Read enable signal"
+        },
+        {
+          "name": "wr_data",
+          "direction": "input",
+          "width": "DATA_WIDTH",
+          "description": "Write data input"
+        },
+        {
+          "name": "rd_data",
+          "direction": "output",
+          "width": "DATA_WIDTH",
+          "description": "Read data output"
+        },
+        {
+          "name": "full",
+          "direction": "output",
+          "width": 1,
+          "description": "FIFO full status flag"
+        },
+        {
+          "name": "empty",
+          "direction": "output",
+          "width": 1,
+          "description": "FIFO empty status flag"
+        },
+        {
+          "name": "almost_full",
+          "direction": "output",
+          "width": 1,
+          "description": "Almost full flag (DEPTH-1 entries)"
+        },
+        {
+          "name": "almost_empty",
+          "direction": "output",
+          "width": 1,
+          "description": "Almost empty flag (1 entry)"
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": "ADDR_WIDTH+1",
+          "description": "Current number of entries in FIFO"
+        }
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "description": "Data shall be read in the same order it was written (first-in-first-out)",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-002",
+      "description": "The full flag shall be asserted when FIFO contains DEPTH entries and shall prevent further writes",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-003",
+      "description": "The empty flag shall be asserted when FIFO contains 0 entries and shall prevent further reads",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-004",
+      "description": "Write operations shall be ignored when full is asserted (unless simultaneous read)",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-005",
+      "description": "Read operations shall be ignored when empty is asserted (unless simultaneous write)",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-006",
+      "description": "The count signal shall accurately reflect the number of entries in the FIFO",
+      "priority": "medium",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-007",
+      "description": "The almost_full flag shall be asserted when count equals (DEPTH-1)",
+      "priority": "medium",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-008",
+      "description": "The almost_empty flag shall be asserted when count equals 1",
+      "priority": "medium",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-009",
+      "description": "When wr_en and rd_en are both asserted: if empty perform write only, if full perform read only, otherwise perform both",
+      "priority": "high",
+      "category": "functional"
+    },
+    {
+      "id": "REQ-010",
+      "description": "Upon rst_n assertion: FIFO cleared, empty=1, full=0, count=0, pointers reset to 0",
+      "priority": "high",
+      "category": "reset"
+    },
+    {
+      "id": "REQ-011",
+      "description": "All outputs shall be synchronous to the rising edge of clk",
+      "priority": "high",
+      "category": "timing"
+    },
+    {
+      "id": "REQ-012",
+      "description": "Data shall not be corrupted during storage or retrieval",
+      "priority": "high",
+      "category": "data_integrity"
+    }
+  ],
+  "corner_cases": [
+    {
+      "id": "CC-001",
+      "description": "Write to Full FIFO",
+      "how_to_test": "Fill FIFO completely then attempt additional writes, verify writes are ignored and no data corruption occurs"
+    },
+    {
+      "id": "CC-002",
+      "description": "Read from Empty FIFO",
+      "how_to_test": "Empty FIFO completely then attempt additional reads, verify reads are ignored and output remains stable"
+    },
+    {
+      "id": "CC-003",
+      "description": "Simultaneous R/W When Full",
+      "how_to_test": "Fill FIFO then assert both wr_en and rd_en, verify only read operation occurs"
+    },
+    {
+      "id": "CC-004",
+      "description": "Simultaneous R/W When Empty",
+      "how_to_test": "Empty FIFO then assert both wr_en and rd_en, verify only write operation occurs"
+    },
+    {
+      "id": "CC-005",
+      "description": "Pointer Wraparound",
+      "how_to_test": "Fill and empty FIFO multiple times to exercise pointer wraparound at depth boundaries"
+    },
+    {
+      "id": "CC-006",
+      "description": "Rapid Fill/Empty Cycles",
+      "how_to_test": "Rapidly alternate between filling and emptying FIFO to test flag stability"
+    },
+    {
+      "id": "CC-007",
+      "description": "Single Entry Operation",
+      "how_to_test": "Test behavior when FIFO has exactly 1 entry, verify almost_empty flag and transitions"
+    },
+    {
+      "id": "CC-008",
+      "description": "Reset During Operations",
+      "how_to_test": "Assert reset during active read/write operations, verify clean recovery to reset state"
+    },
+    {
+      "id": "CC-009",
+      "description": "Back-to-Back Operations",
+      "how_to_test": "Perform consecutive read/write operations without idle cycles, verify correct behavior"
+    },
+    {
+      "id": "CC-010",
+      "description": "Data Patterns",
+      "how_to_test": "Test with various data patterns (all 0s, all 1s, random, walking bits) to verify data integrity"
+    }
+  ]
+}

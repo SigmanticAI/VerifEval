@@ -1,3 +1,7 @@
+// Auto-added UVM imports
+import uvm_pkg::*;
+`include "uvm_macros.svh"
+
 Here's the complete SystemVerilog functional coverage code for the sync_fifo design:
 
 ```systemverilog

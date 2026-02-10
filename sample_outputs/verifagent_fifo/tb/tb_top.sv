@@ -1,4 +1,3 @@
-```systemverilog
 `timescale 1ns/1ps
 
 module sync_fifo_tb_top;
@@ -195,4 +194,3 @@ module sync_fifo_tb_top;
   end
 
 endmodule
-```

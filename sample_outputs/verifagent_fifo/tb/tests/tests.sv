@@ -1,3 +1,7 @@
+// Auto-added UVM imports
+import uvm_pkg::*;
+`include "uvm_macros.svh"
+
 I'll generate comprehensive UVM test classes for the sync_fifo design based on the verification plan. Here's the complete SystemVerilog code:
 
 ```systemverilog

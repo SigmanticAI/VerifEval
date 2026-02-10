@@ -1,4 +1,3 @@
-```systemverilog
 interface sync_fifo_if #(
     parameter DATA_WIDTH = 8,
     parameter ADDR_WIDTH = 4
@@ -96,4 +95,3 @@ interface sync_fifo_if #(
     );
 
 endinterface
-```

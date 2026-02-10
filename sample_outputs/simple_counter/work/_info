@@ -1,0 +1,169 @@
+m255
+K4
+z2
+!s12c _opt
+Z0 !s99 nomlopt
+!s11f vlog 2025.3_2 2025.11, Nov 20 2025
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+Z1 d/home/rocky/VerifEval/sample_outputs/simple_counter
+T_opt
+!i145 1
+!s11d counter_pkg /home/rocky/VerifEval/sample_outputs/simple_counter/work 1 counter_if 1 /home/rocky/VerifEval/sample_outputs/simple_counter/work 
+!s11d uvm_pkg /home/rocky/questa/questasim/uvm-1.2 1 counter_if 1 /home/rocky/VerifEval/sample_outputs/simple_counter/work 
+!i144 0
+!s110 1769982149
+V6bC0d3lRzOmlP@186f6>d2
+04 6 4 work tb_top fast 0
+=1-0e944f230651-697fc8c5-12fc4-a510
+R0
+!s12f OEM100
+!s12b OEM100
+!s124 OEM100
+!s135 nogc
+o-quiet -auto_acc_if_foreign -work work -L /home/rocky/questa/questasim/uvm-1.2
+Z2 tCvgOpt 0
+n@_opt
+OL;O;2025.3_2;82
+vcounter
+Z3 2rtl/counter.sv|tb/counter_if.sv|tb/counter_pkg.sv|tb/tb_top.sv
+Z4 DXx6 sv_std 3 std 0 22 @5XbY]_OacJl=`ToSm<M^0
+Z5 !s110 1769982148
+!i10b 1
+!s100 ::<1_1zAU<U9:2G4LTG3>3
+I7SLX;^^H08RlM2jiPZlVC0
+S1
+R1
+w1769981898
+8rtl/counter.sv
+Frtl/counter.sv
+!i122 0
+L0 2 25
+Z6 VDg1SIo80bB@j0V0VzS_@n1
+Z7 OL;L;2025.3_2;82
+r1
+!s85 0
+31
+Z8 !s108 1769982148.000000
+Z9 !s107 /home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_deprecated_defines.svh|/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_reg_defines.svh|/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_callback_defines.svh|/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_sequence_defines.svh|/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/tlm1/uvm_tlm_imps.svh|/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_tlm_defines.svh|/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_printer_defines.svh|/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_object_defines.svh|/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_phase_defines.svh|/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_message_defines.svh|/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_global_defines.svh|/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_version_defines.svh|/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/uvm_macros.svh|tb/tb_top.sv|tb/counter_pkg.sv|tb/counter_if.sv|rtl/counter.sv|
+Z10 !s90 -sv|+incdir+/home/rocky/questa/questasim/uvm-1.2/src|+incdir+.|+incdir+tb|+incdir+rtl|+cover=bcestf|-coveropt|3|-L|/home/rocky/questa/questasim/uvm-1.2|-work|work|rtl/counter.sv|tb/counter_if.sv|tb/counter_pkg.sv|tb/tb_top.sv|
+!i113 0
+Z11 !s102 +cover=bcestf -coveropt 3
+Z12 o-sv +cover=bcestf -coveropt 3 -L /home/rocky/questa/questasim/uvm-1.2 -work work -L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+Z13 !s92 -sv +incdir+/home/rocky/questa/questasim/uvm-1.2/src +incdir+. +incdir+tb +incdir+rtl +cover=bcestf -coveropt 3 -L /home/rocky/questa/questasim/uvm-1.2 -work work -L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+R2
+Ycounter_if
+R3
+R4
+R5
+!i10b 1
+!s100 5hd0:OBHf0CgDgR`;Kf3?1
+I:S;@]<flJefOfkDWeeH1h1
+S1
+R1
+w1769981977
+8tb/counter_if.sv
+Ftb/counter_if.sv
+!i122 0
+L0 4 0
+R6
+R7
+r1
+!s85 0
+31
+R8
+R9
+R10
+!i113 0
+R11
+R12
+R13
+R2
+Xcounter_pkg
+R3
+!s115 counter_if
+R4
+Z14 DXx36 /home/rocky/questa/questasim/uvm-1.2 7 uvm_pkg 0 22 eYbCHaZZb5>N0>Ja89Y=V3
+R5
+!i10b 1
+!s100 Ydjf6AK0JWlN0e9lj17i_0
+I7hbnF@083Vki=@`D8kDcR0
+S1
+R1
+w1769982032
+8tb/counter_pkg.sv
+Ftb/counter_pkg.sv
+Z15 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/uvm_macros.svh
+Z16 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_version_defines.svh
+Z17 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_global_defines.svh
+Z18 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_message_defines.svh
+Z19 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_phase_defines.svh
+Z20 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_object_defines.svh
+Z21 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_printer_defines.svh
+Z22 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_tlm_defines.svh
+Z23 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/tlm1/uvm_tlm_imps.svh
+Z24 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_sequence_defines.svh
+Z25 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_callback_defines.svh
+Z26 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_reg_defines.svh
+Z27 F/home/rocky/questa/questasim/uvm-1.2/../verilog_src/uvm-1.2/src/macros/uvm_deprecated_defines.svh
+!i122 0
+L0 2 0
+V7hbnF@083Vki=@`D8kDcR0
+R7
+r1
+!s85 0
+31
+R8
+R9
+R10
+!i113 0
+R11
+R12
+R13
+R2
+vtb_top
+R3
+R4
+R14
+DXx4 work 11 counter_pkg 0 22 7hbnF@083Vki=@`D8kDcR0
+R5
+!i10b 1
+!s100 04M`GYCeS@VS?bO5QzKTe2
+IoIm<eafFDmOYmbCk@?1Dc3
+S1
+R1
+w1769982000
+8tb/tb_top.sv
+Ftb/tb_top.sv
+R15
+R16
+R17
+R18
+R19
+R20
+R21
+R22
+R23
+R24
+R25
+R26
+R27
+!i122 0
+L0 4 7225
+R6
+R7
+r1
+!s85 0
+31
+R8
+R9
+R10
+!i113 0
+R11
+R12
+R13
+R2

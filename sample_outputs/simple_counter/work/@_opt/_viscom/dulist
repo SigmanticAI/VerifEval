@@ -1,0 +1,7 @@
+1 7 uvm_pkg 4 fast 36 /home/rocky/questa/questasim/uvm-1.2 1 0 30310400 0 153676 0
+1 14 questa_uvm_pkg 4 fast 36 /home/rocky/questa/questasim/uvm-1.2 1 0 1885184 30310400 8675 0
+1 11 counter_pkg 4 fast 56 /home/rocky/VerifEval/sample_outputs/simple_counter/work 1 0 1044480 30310400 3099 0
+1 10 counter_if 5 synth 56 /home/rocky/VerifEval/sample_outputs/simple_counter/work 1 0 0 0 0 0
+1 10 counter_if 7 fast__2 56 /home/rocky/VerifEval/sample_outputs/simple_counter/work 1 0 0 0 215 0
+1 7 counter 4 fast 56 /home/rocky/VerifEval/sample_outputs/simple_counter/work 1 0 0 0 54 0
+1 6 tb_top 4 fast 56 /home/rocky/VerifEval/sample_outputs/simple_counter/work 1 0 131072 30965760 1265 0

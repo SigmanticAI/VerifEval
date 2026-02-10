@@ -1,4 +1,3 @@
-```systemverilog
 //==============================================================================
 // SVA Assertions for Synchronous FIFO Design
 // Generated for comprehensive verification coverage

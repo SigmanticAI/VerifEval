@@ -1,3 +1,7 @@
+// Auto-added UVM imports
+import uvm_pkg::*;
+`include "uvm_macros.svh"
+
 I'll generate a complete UVM environment for the sync_fifo design. Here's the SystemVerilog code:
 
 ## 1. sync_fifo_if.sv - Interface
