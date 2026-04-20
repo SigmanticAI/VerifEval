@@ -1,0 +1,9 @@
+1 7 uvm_pkg 4 fast 39 /home/rocky/VerifEval/verif/spi/tb/work 1 0 30310400 0 153676 0
+1 7 spi_pkg 4 fast 39 /home/rocky/VerifEval/verif/spi/tb/work 1 0 5051392 30310400 10958 0
+1 14 tb_top_sv_unit 4 fast 39 /home/rocky/VerifEval/verif/spi/tb/work 1 0 0 32703488 0 0
+1 6 spi_if 5 synth 39 /home/rocky/VerifEval/verif/spi/tb/work 1 0 0 0 0 0
+1 6 spi_if 7 fast__2 39 /home/rocky/VerifEval/verif/spi/tb/work 1 0 131072 0 520 0
+1 9 spi_clgen 4 fast 39 /home/rocky/VerifEval/verif/spi/tb/work 1 0 0 0 134 0
+1 9 spi_shift 4 fast 39 /home/rocky/VerifEval/verif/spi/tb/work 1 0 131072 0 383 0
+1 7 spi_top 4 fast 39 /home/rocky/VerifEval/verif/spi/tb/work 1 0 131072 0 931 0
+1 6 tb_top 4 fast 39 /home/rocky/VerifEval/verif/spi/tb/work 1 0 262144 32703488 1591 0

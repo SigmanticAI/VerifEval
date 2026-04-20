@@ -1,0 +1,1 @@
+/home/rocky/questa/questasim/linux_x86_64/VisualizerRls/bin/viscom -nolock -quiet -jmem_size 99438192 -sv +acc +incdir+/home/rocky/questa/questasim/verilog_src/uvm-1.2/src +incdir+/home/rocky/VerifEval/golden_rtl/spi tb_top -o tb_top_opt +__betafsm

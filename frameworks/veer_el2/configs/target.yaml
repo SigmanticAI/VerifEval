@@ -1,0 +1,177 @@
+# =============================================================================
+# VeeR EL2 benchmark target configuration
+# =============================================================================
+# This file is the single source of truth that the VeeR EL2 benchmark pipeline
+# reads to know:
+#   * where the golden (reference) repo lives
+#   * which docs/files form the *spec input* for generation
+#   * which RTL files form the *golden RTL inventory* used for matching
+#   * which testbench / verification flows to run as part of evaluation
+#   * which top-level module name and key ports must exist in candidate RTL
+#
+# Edit this file (not Python code) when changing what counts as the benchmark
+# target.  The pipeline is intentionally driven from declarative config so the
+# same scripts work for any other RISC-V/SoC core that is dropped under
+# `VerifEval/golden_rtl/<name>/` with a matching config.
+# =============================================================================
+
+target_name: veer_el2
+display_name: "VeeR EL2 RISC-V Core"
+upstream_repo: "https://github.com/chipsalliance/Cores-VeeR-EL2.git"
+upstream_commit: ""   # filled in by `prepare` step (HEAD sha at clone time)
+
+# ---------------------------------------------------------------------------
+# Filesystem locations (all paths are relative to VerifEval root unless they
+# start with '/').  Resolved by scripts/lib/paths.py.
+# ---------------------------------------------------------------------------
+paths:
+  # Cloned upstream repo (golden RTL + golden testbench + golden docs)
+  golden_repo:    "golden_rtl/veer_el2"
+  # Where the normalized spec-pack is written by `prepare-spec`
+  spec_pack:      "frameworks/veer_el2/spec"
+  # Where per-run artifacts (generated RTL, logs, eval results) land
+  runs_root:      "frameworks/veer_el2/runs"
+  # Aggregated/long-term reports
+  reports_root:   "frameworks/veer_el2/reports"
+  # Per-design-only baseline drop area for prompt-only mode
+  baseline_drop:  "frameworks/veer_el2/runs/_baseline_drop"
+
+# ---------------------------------------------------------------------------
+# Spec-pack: the deterministic, versioned set of inputs that we feed any
+# generator (VerifAgent or prompt-only baseline).  Anything NOT listed here
+# is considered "out of spec" and must not be relied on by the generator.
+#
+# Why these files were chosen:
+#   * docs/source/intro.md, overview.md          -> overall what-is-it
+#   * docs/source/memory-map.md                  -> required for any RTL that
+#                                                   touches the bus / DCCM / ICCM
+#   * docs/source/complex-ports.md               -> top-level port list (used to
+#                                                   size & wire generated RTL)
+#   * docs/source/csrs.md                        -> CSR layout
+#   * docs/source/build-args.md, adaptations.md  -> configurable parameters
+#   * docs/source/clocks.md, power.md            -> clock/reset/power conventions
+#   * docs/source/error-protection.md, cache.md  -> ECC + cache
+#   * docs/source/interrupts.md, timers.md, etc. -> required interrupt/timer
+#                                                   behavior
+#   * docs/source/verification.md, tests.md      -> what tests exist & pass
+#   * configs/README.md, configs/veer.config     -> configuration interface
+#   * design/flist                               -> authoritative file list
+#   * README.md, release-notes.md                -> high-level + history
+#
+# The PRM PDF (RISC-V_VeeR_EL2_PRM.pdf) is *referenced* via spec_pack/INDEX.md
+# but not extracted (it is binary and not deterministic to render).  The
+# Markdown docs above are the rendered-source equivalent.
+# ---------------------------------------------------------------------------
+spec_inputs:
+  # Anchor docs (always in spec pack)
+  docs:
+    - README.md
+    - release-notes.md
+    - docs/source/intro.md
+    - docs/source/overview.md
+    - docs/source/memory-map.md
+    - docs/source/complex-ports.md
+    - docs/source/csrs.md
+    - docs/source/build-args.md
+    - docs/source/adaptations.md
+    - docs/source/clocks.md
+    - docs/source/power.md
+    - docs/source/error-protection.md
+    - docs/source/cache.md
+    - docs/source/interrupts.md
+    - docs/source/interrupt-priority.md
+    - docs/source/timers.md
+    - docs/source/core-control.md
+    - docs/source/debugging.md
+    - docs/source/dual-core-lock-step.md
+    - docs/source/performance.md
+    - docs/source/physical-memory-protection.md
+    - docs/source/user-mode.md
+    - docs/source/verification.md
+    - docs/source/tests.md
+    - docs/source/simulation-debugging.md
+    - docs/source/errata.md
+    - docs/source/tock.md
+  configs:
+    - configs/README.md
+  # Authoritative file list (not generated content; just a manifest)
+  flists:
+    - design/flist
+    - design/flist.lint
+  # Top-level Module/port "ground truth" we extract from RTL for
+  # interface-matching metrics
+  golden_top_module: el2_veer_wrapper
+  golden_top_file:   design/el2_veer_wrapper.sv
+  # Files we extract to give generators concrete, normative interface info
+  interface_files:
+    - design/el2_veer_wrapper.sv
+    - design/el2_veer.sv
+    - design/include/el2_def.sv
+
+# ---------------------------------------------------------------------------
+# Generation contract: what a generator (VerifAgent or prompt-only baseline)
+# is expected to produce, and where evaluation looks for it.
+#
+# A generated artifact is considered a "candidate RTL set" if it provides at
+# least the top module file (relative to the candidate dir) listed under
+# `required_files`.  Everything optional is bonus.
+# ---------------------------------------------------------------------------
+generation_contract:
+  # Path inside <run_dir>/candidate where generated RTL must live
+  candidate_subdir: "design"
+  # Files that MUST be present in the candidate dir for evaluation to proceed
+  required_files:
+    - "el2_veer_wrapper.sv"
+  # Files that we look for but do not require
+  optional_files:
+    - "el2_veer.sv"
+    - "el2_mem.sv"
+    - "el2_pic_ctrl.sv"
+    - "el2_pmp.sv"
+    - "el2_dma_ctrl.sv"
+    - "include/el2_def.sv"
+  # When the candidate is incomplete, the evaluator can fall back to
+  # filling missing files from the golden tree.  This lets us still run lint
+  # /compile/sim on partial generations and report progress cleanly.
+  allow_golden_fallback: true
+
+# ---------------------------------------------------------------------------
+# Evaluation: which checks to run and how strictly to weight them.
+# Tools that aren't installed are skipped gracefully (status: SKIPPED).
+# ---------------------------------------------------------------------------
+evaluation:
+  # Static / structural
+  enable_verible_lint:     true
+  enable_verilator_lint:   true
+  enable_module_inventory: true
+  enable_port_match:       true
+  enable_file_diff:        true
+  # Dynamic (need toolchains)
+  enable_verilator_build:  true
+  enable_verilator_smoke:  true   # runs hello_world if Verilator+RISCV available
+  enable_questa_build:     false  # gated by env (QUESTA_HOME) and licenses
+  enable_vcs_build:        false
+  # Synthesis
+  enable_vivado_elab:      true   # uses xelab if available, falls back graceful
+  enable_vivado_synth:     false  # heavy; opt-in only
+  # Optional smoke test list (subset of testbench/asm tests). hex variant is
+  # used so that systems without a riscv64-unknown-elf toolchain still pass
+  # generation+sim.  Hex files are precompiled in testbench/hex/.
+  smoke_tests:
+    - hello_world
+  # Build/sim wallclock limits (seconds)
+  verilator_build_timeout: 1800
+  verilator_run_timeout:   600
+  vivado_elab_timeout:     1200
+
+# ---------------------------------------------------------------------------
+# Scoring weights (must sum to 1.0).  See scripts/lib/scoring.py.
+# ---------------------------------------------------------------------------
+scoring_weights:
+  inventory:        0.10
+  port_match:       0.10
+  lint:             0.15
+  build:            0.20
+  smoke:            0.25
+  synth_elab:       0.10
+  diff_similarity:  0.10

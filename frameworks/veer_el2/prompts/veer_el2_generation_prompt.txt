@@ -1,0 +1,102 @@
+You are an expert RTL designer.  Your task is to generate the SystemVerilog
+RTL for the **{display_name}** ({target_name}) — a small, configurable,
+in-order 32-bit RISC-V core (RV32IMC + Zicsr + Zifencei) — using *only* the
+documentation and reference material in the spec pack listed below.
+
+The reference (golden) implementation is the upstream open-source repo
+{upstream_repo}.  You are NOT allowed to literally clone it; instead, treat
+the spec pack as the contract and produce RTL that matches the documented
+interface and behavior.
+
+================================================================================
+SPEC PACK (everything you may consult)
+================================================================================
+The spec pack lives at:
+
+    {spec_pack_dir}
+
+It contains:
+
+    INDEX.md              # human-readable index of every file in the pack
+    MANIFEST.json         # machine-readable manifest with sha256 hashes
+    docs/                 # rendered Markdown docs from the upstream repo
+    configs/              # configurable build-arg documentation
+    interfaces/           # the exact top-level RTL interface files (read-only;
+                          # the port lists / parameters here are NORMATIVE)
+    flists/               # authoritative Verilog file list
+    verification/INDEX.md # pointer at the golden verification flow your RTL
+                          # will be tested against (you do NOT generate the TB)
+    normalized_spec.json  # machine-readable extract: top module, ports,
+                          # parameters, module inventory
+
+For your convenience, here is the manifest (truncated):
+
+```
+{manifest_blob}
+```
+
+================================================================================
+TOP-LEVEL MODULE — must match exactly
+================================================================================
+Top module name:  {top_module}
+Top module file:  {top_file}
+
+The port list and parameter list of `{top_module}` are NORMATIVE.  You must
+expose the SAME port names and SAME directions and SAME widths as the
+interface file in `spec_pack/interfaces/`.  The downstream evaluator will
+run `verible-verilog-lint`, `verilator --lint-only`, the upstream
+`make verilator-build`, and a Vivado xelab elaboration against your output.
+A port-name / port-direction mismatch will cause the evaluation to fail.
+
+================================================================================
+GENERATION CONTRACT — where to write your RTL
+================================================================================
+Write your generated SystemVerilog under:
+
+    <run_dir>/candidate/{candidate_subdir}/
+
+mirroring the upstream `design/` layout (the same subdirectories: `dec/`,
+`exu/`, `ifu/`, `lsu/`, `dbg/`, `dmi/`, `lib/`, `include/`, `pic/`, etc).
+
+Required files (must be present, with the same filename + same module name):
+    {required_files}
+
+Optional but strongly preferred files (downstream metric awards points):
+    {optional_files}
+
+You may also produce additional helper modules; the evaluator will compile
+them all together via the upstream `design/flist`.
+
+================================================================================
+EVALUATION (so you know what success looks like)
+================================================================================
+Your output will be assessed by the VeeR EL2 benchmark in `VerifEval`.
+The pipeline runs the following checks against your candidate RTL, REUSING
+the upstream golden testbench infrastructure:
+
+    1. Module inventory match (vs golden)
+    2. Top-module port match (names, directions)
+    3. File-level diff similarity (proxy)
+    4. Verible lint (verible-verilog-lint, all candidate files)
+    5. Verilator --lint-only against design/flist.lint
+    6. Verilator full build with the golden testbench (tb_top + test_tb_top.cpp)
+    7. Smoke run of testbench/asm/hello_world (using precompiled hex)
+    8. Vivado xelab elaboration
+
+The single best signal of correctness is: passing the upstream `hello_world`
+test under the unmodified upstream testbench.
+
+================================================================================
+WHAT YOU MUST NOT DO
+================================================================================
+* Do NOT modify the testbench, the Makefile, the lint flists, the configs,
+  or anything outside `<run_dir>/candidate/{candidate_subdir}/`.
+* Do NOT invent new top-level ports.
+* Do NOT fetch the upstream repo or any extra context beyond the spec pack.
+* Do NOT generate a verification environment / UVM / SVA — that is out of
+  scope for this benchmark; testing is performed by the GOLDEN testbench
+  against your generated RTL.
+
+When you are done, ensure that the file `el2_veer_wrapper.sv` (or the
+`{top_file}` listed above) exists in your candidate directory and that its
+top module is named exactly `{top_module}` with the documented ports.
