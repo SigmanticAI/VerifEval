@@ -1,0 +1,178 @@
+{
+  "ip_name": "rv_timer",
+  "generated_at": "2026-04-20T22:33:08+00:00",
+  "source_root": "/home/saislam/VerifEval/golden_rtl/OpenTitan/ip/rv_timer",
+  "source_paths": {
+    "env_cov": "dv/env/rv_timer_env_cov.sv",
+    "testplan": "data/rv_timer_testplan.hjson",
+    "seq_lib_dir": "dv/env/seq_lib",
+    "tests_dir": "dv/tests",
+    "sva_dir": "dv/sva"
+  },
+  "functional_coverage": {
+    "total_covergroups": 2,
+    "total_coverpoints": 5,
+    "total_crosses": 0,
+    "total_bins": 13,
+    "covergroups": [
+      {
+        "name": "timer_cfg_cg",
+        "sample_signature": "bit [7:0]  step,\n                                                      bit [11:0] prescale,\n                                                      uint64 mtime,\n                                                      uint64 mtime_cmp",
+        "coverpoints": [
+          "cp_step",
+          "cp_prescale",
+          "cp_mtime",
+          "cp_mtime_cmp"
+        ],
+        "crosses": [],
+        "bin_count": 12,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "timer_active_cg",
+        "sample_signature": "bit [31:0] value",
+        "coverpoints": [
+          "cp_active_timers"
+        ],
+        "crosses": [],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      }
+    ]
+  },
+  "testplan": {
+    "total_testpoints": 8,
+    "stage_distribution": {
+      "V1": 1,
+      "V2": 5,
+      "V3": 2
+    },
+    "unique_tests": [
+      "rv_timer_random",
+      "rv_timer_random_reset",
+      "rv_timer_disabled",
+      "rv_timer_cfg_update_on_fly",
+      "rv_timer_min",
+      "rv_timer_max",
+      "rv_timer_stress_all"
+    ],
+    "total_unique_tests": 7,
+    "testpoints": [
+      {
+        "name": "random",
+        "stage": "V1",
+        "tests": [
+          "rv_timer_random"
+        ],
+        "description": "RV_TIMER random test performs following steps for number of iterations\n            - Program zero to CTRL.active* Register(deactivate timer)\n            - Program random legal values in CFG*, TIMER_V_*, COMPARE_*, INTR_ENABLE*\n            - Program one to CTRL.active* (activate timer)\n            - Wait for number of cycles to have mTime>= mTimeCmp\n            - Check Interrupt state register and Interrupt signal (scoreboard logic)"
+      },
+      {
+        "name": "random_reset",
+        "stage": "V2",
+        "tests": [
+          "rv_timer_random_reset"
+        ],
+        "description": "This test is to exercise on the fly reset(timer is active)\n            - Assert reset randomly in the middle of random test steps\n            - Scoreboard check for all register go back to reset value"
+      },
+      {
+        "name": "disabled",
+        "stage": "V2",
+        "tests": [
+          "rv_timer_disabled"
+        ],
+        "description": "This test to verify no activity in mTime, Interrupt Status, Interrupt signal,\n            When all timers are deactivated (ctrl.active = 0).\n            - Program 1 in interrupt enable and 0 in control register and random value for\n              rest of the registers\n            - Scoreboard check for no activity and no interrupt whatever is setting"
+      },
+      {
+        "name": "cfg_update_on_fly",
+        "stage": "V2",
+        "tests": [
+          "rv_timer_cfg_update_on_fly"
+        ],
+        "description": "This test will verify update timer configuration on running timer.\n            - Program timer.Active to zero\n            - Program random values in interrupt enable, prescaler, step, mtime and mtime cmp\n            - After some clocks update timer config values\n            - Check for interrupt as per new config set"
+      },
+      {
+        "name": "no_interrupt_test",
+        "stage": "V2",
+        "tests": [
+          "rv_timer_cfg_update_on_fly"
+        ],
+        "description": "This test will update timer value and compare value just before timer is going to\n            expire (multiple times) and verify no interrupt is asserted\n            - Program timer.Active to zero\n            - Program random values in interrupt enable, prescaler, step, mtime and mtime cmp\n            - Update timer config values just before timer is about to expire\n            - Check for no interrupt set"
+      },
+      {
+        "name": "min_value",
+        "stage": "V3",
+        "tests": [
+          "rv_timer_min"
+        ],
+        "description": "This test configures the prescaler and mtime to 0.\n            The step is randomised between 0 and 1 to allow the counter to increase sometimes.\n            The register timecmp is randomised to be set up to 5, so some seeds trigger an interrupt directly on configuration if timecmp=0.\n            While others force mtime to increase.\n            This test helps close functional coverage by hitting the minimum values for step, prescaler, mtime and mtimecmp"
+      },
+      {
+        "name": "max_value",
+        "stage": "V3",
+        "tests": [
+          "rv_timer_max"
+        ],
+        "description": "This test configures the prescaler, step and mtimecm to the maximum value.\n            The counter is randomised to be up to 5 units lower than the timecmp.\n            By doing this, some seeds trigger an interrupt directly on configuration if timecmp=mtime.\n            While others force mtime to increase.\n            This test helps close functional coverage by hitting the maximum values for step, prescaler, mtime and mtimecmp"
+      },
+      {
+        "name": "stress",
+        "stage": "V2",
+        "tests": [
+          "rv_timer_stress_all"
+        ],
+        "description": "Do combinations of multiple of above scenarios to get multiple interrupts\n            asserted at the same time. Scoreboard should be robust enough to deal with all\n            scenarios."
+      }
+    ]
+  },
+  "sequences": {
+    "total_sequences": 9,
+    "sequence_classes": [
+      "rv_timer_base_vseq",
+      "rv_timer_cfg_update_on_fly_vseq",
+      "rv_timer_common_vseq",
+      "rv_timer_disabled_vseq",
+      "rv_timer_max_vseq",
+      "rv_timer_min_vseq",
+      "rv_timer_random_reset_vseq",
+      "rv_timer_random_vseq",
+      "rv_timer_stress_all_vseq"
+    ],
+    "sequence_files": [
+      "rv_timer_base_vseq.sv",
+      "rv_timer_cfg_update_on_fly_vseq.sv",
+      "rv_timer_common_vseq.sv",
+      "rv_timer_disabled_vseq.sv",
+      "rv_timer_max_vseq.sv",
+      "rv_timer_min_vseq.sv",
+      "rv_timer_random_reset_vseq.sv",
+      "rv_timer_random_vseq.sv",
+      "rv_timer_stress_all_vseq.sv"
+    ]
+  },
+  "tests": {
+    "total_test_classes": 1,
+    "test_classes": [
+      "rv_timer_base_test"
+    ],
+    "test_files": [
+      "rv_timer_base_test.sv",
+      "rv_timer_test_pkg.sv"
+    ]
+  },
+  "assertions": {
+    "bind_files": [
+      "rv_timer_bind.sv"
+    ],
+    "total_binds": 2,
+    "binds": [
+      {
+        "dut": "rv_timer",
+        "module": "tlul_assert"
+      },
+      {
+        "dut": "rv_timer",
+        "module": "rv_timer_csr_assert_fpv"
+      }
+    ]
+  }
+}

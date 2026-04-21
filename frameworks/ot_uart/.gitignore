@@ -1,0 +1,11 @@
+# Regenerable artifacts (see verifagent_v2.bench.scoring)
+conditions/
+runs/
+spec/
+reports/
+artifacts/
+results/
+**/__pycache__/
+*.pyc
+!runs/.gitkeep
+!reports/.gitkeep

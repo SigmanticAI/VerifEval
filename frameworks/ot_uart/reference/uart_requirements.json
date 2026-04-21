@@ -1,0 +1,376 @@
+{
+  "ip_name": "uart",
+  "generated_at": "2026-04-20T22:33:07+00:00",
+  "source_root": "/home/saislam/VerifEval/golden_rtl/OpenTitan/ip/uart",
+  "source_paths": {
+    "env_cov": "dv/env/uart_env_cov.sv",
+    "testplan": "data/uart_testplan.hjson",
+    "seq_lib_dir": "dv/env/seq_lib",
+    "tests_dir": "dv/tests",
+    "sva_dir": "dv/sva"
+  },
+  "functional_coverage": {
+    "total_covergroups": 9,
+    "total_coverpoints": 12,
+    "total_crosses": 3,
+    "total_bins": 9,
+    "covergroups": [
+      {
+        "name": "rx_fifo_level_cg",
+        "sample_signature": "int lvl, bit rst",
+        "coverpoints": [
+          "cp_lvl",
+          "cp_rst"
+        ],
+        "crosses": [
+          "cp_lvl x cp_rst"
+        ],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "tx_fifo_level_cg",
+        "sample_signature": "int lvl, bit rst",
+        "coverpoints": [
+          "cp_lvl",
+          "cp_rst"
+        ],
+        "crosses": [
+          "cp_lvl x cp_rst"
+        ],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "baud_rate_w_core_clk_cg",
+        "sample_signature": "baud_rate_e baud_rate,\n                                                          int clk_freq",
+        "coverpoints": [
+          "cp_baud_rate",
+          "cp_clk_freq"
+        ],
+        "crosses": [
+          "cp_baud_rate x cp_clk_freq"
+        ],
+        "bin_count": 1,
+        "ignore_bin_count": 1
+      },
+      {
+        "name": "tx_watermark_cg",
+        "sample_signature": "int watermark_lvl",
+        "coverpoints": [
+          "cp_watermark_lvl"
+        ],
+        "crosses": [],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "rx_watermark_cg",
+        "sample_signature": "int watermark_lvl",
+        "coverpoints": [
+          "cp_watermark_lvl"
+        ],
+        "crosses": [],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "rx_break_err_cg",
+        "sample_signature": "int break_lvl",
+        "coverpoints": [
+          "cp_break_level"
+        ],
+        "crosses": [],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "rx_timeout_cg",
+        "sample_signature": "int timeout",
+        "coverpoints": [
+          "cp_timeout"
+        ],
+        "crosses": [],
+        "bin_count": 3,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "rx_parity_err_cg",
+        "sample_signature": "bit parity",
+        "coverpoints": [
+          "cp_parity"
+        ],
+        "crosses": [],
+        "bin_count": 0,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "noise_filter_cg",
+        "sample_signature": "bit rx_sync, bit rx_sync_q1, bit rx_sync_q2",
+        "coverpoints": [
+          "cp_noise_filter"
+        ],
+        "crosses": [],
+        "bin_count": 0,
+        "ignore_bin_count": 0
+      }
+    ]
+  },
+  "testplan": {
+    "total_testpoints": 20,
+    "stage_distribution": {
+      "V1": 1,
+      "V2": 19
+    },
+    "unique_tests": [
+      "uart_smoke",
+      "uart_tx_rx",
+      "uart_rx_parity_err",
+      "uart_intr",
+      "uart_fifo_full",
+      "uart_fifo_overflow",
+      "uart_fifo_reset",
+      "uart_perf",
+      "uart_loopback",
+      "uart_noise_filter",
+      "uart_rx_start_bit_filter",
+      "uart_tx_ovrd",
+      "uart_rx_oversample",
+      "uart_long_xfer_wo_dly",
+      "uart_stress_all"
+    ],
+    "total_unique_tests": 15,
+    "testpoints": [
+      {
+        "name": "smoke",
+        "stage": "V1",
+        "tests": [
+          "uart_smoke"
+        ],
+        "description": "- UART smoke test with few bytes transmitted and received asynchronously and\n              in parallel with scoreboard checks\n            - TX and RX have 2 independent threads respectively.\n              -  program one Tx item in register and wait for it to complete at uart interface,\n                 before send another one\n              - sequentially send one Rx byte, then immediately read from register and check it"
+      },
+      {
+        "name": "base_random_seq",
+        "stage": "V2",
+        "tests": [
+          "uart_tx_rx"
+        ],
+        "description": "- This is the basic sequence that is extended by most of random sequence.\n            - TX and RX have 2 independent threads respectively.\n              - TX: keep programming csr wdata with random delay when fifo isn't full\n              - RX: 2 processes. One is to send item through uart interface when fifo isn't full\n                and the other is to read csr rdata when fifo isn't empty"
+      },
+      {
+        "name": "parity",
+        "stage": "V2",
+        "tests": [
+          "uart_smoke",
+          "uart_tx_rx"
+        ],
+        "description": "Send / receive bytes with parity and odd parity enabled randomly."
+      },
+      {
+        "name": "parity_error",
+        "stage": "V2",
+        "tests": [
+          "uart_rx_parity_err",
+          "uart_intr"
+        ],
+        "description": "- Enable parity and randomly set even/odd parity\n            - Inject parity error randomly on data sent from rx and ensure the interrupt is\n              raised"
+      },
+      {
+        "name": "watermark",
+        "stage": "V2",
+        "tests": [
+          "uart_tx_rx",
+          "uart_intr"
+        ],
+        "description": "- Program random tx/rx fifo watermark level and keep sending random tx/rx data\n              to fifo.\n            - As the number of pending data entries in the tx/rx fifo reaches the programmed\n              watermark level (fifo size >= watermark level), ensure that the watermark interrupt\n              is asserted\n            - Ensure interrupt stays asserted until cleared as well as fifo level dropped.\n              The tx/rx watermark interrupt is sticky"
+      },
+      {
+        "name": "fifo_full",
+        "stage": "V2",
+        "tests": [
+          "uart_fifo_full"
+        ],
+        "description": "Send over 32 bytes of data but stop when fifo is full"
+      },
+      {
+        "name": "fifo_overflow",
+        "stage": "V2",
+        "tests": [
+          "uart_fifo_overflow"
+        ],
+        "description": "- Keep sending over 32 bytes of data over tx/rx fifo\n            - Ensure excess data bytes are dropped and check overflow interrupt\n            - This uart_fifo_overflow_vseq is extent from uart_fifo_full_vseq and override the\n              constraint to be able to send data over fifo size"
+      },
+      {
+        "name": "fifo_reset",
+        "stage": "V2",
+        "tests": [
+          "uart_fifo_reset"
+        ],
+        "description": "- Fill up the tx/rx fifo. After a random number of bytes shows up on fifo, reset\n              the fifo and ensure that the remaining data bytes do not show up\n            - this sequence is extent from uart_fifo_overflow_vseq, so it can also reset when fifo\n              is at any level, including full or overflow"
+      },
+      {
+        "name": "rx_frame_err",
+        "stage": "V2",
+        "tests": [
+          "uart_intr"
+        ],
+        "description": "- Inject frame error in parity and non-parity cases by not setting stop bit = 1\n            - Ensure the interrupt gets asserted"
+      },
+      {
+        "name": "rx_break_err",
+        "stage": "V2",
+        "tests": [
+          "uart_intr"
+        ],
+        "description": "- Program random number of break detection characters\n            - create a frame error scenario and send random number of 0 bytes\n            - If that random number exceeds the programmed break characters\n            - Ensure that the break_err interrupt is asserted"
+      },
+      {
+        "name": "rx_timeout",
+        "stage": "V2",
+        "tests": [
+          "uart_intr"
+        ],
+        "description": "- Program timeout_ctrl register to randomize the timeout. Send random number of\n              data over rx\n            - Wait until it's about to timeout, then check timeout interrupt doesn't fire. Wait\n              for timeout and check timeout interrupt fires\n            - Wait until it's about to timeout, then use either read csr rdata or send RX item\n              through uart interface to reset timeout timer in order to ensure timeout never\n              fires"
+      },
+      {
+        "name": "perf",
+        "stage": "V2",
+        "tests": [
+          "uart_perf"
+        ],
+        "description": "Run fifo_full_vseq with very small delays"
+      },
+      {
+        "name": "sys_loopback",
+        "stage": "V2",
+        "tests": [
+          "uart_loopback"
+        ],
+        "description": "- Enable system loopback, then drive uart TX and data will be loopbacked through RX\n            - After loopback is done, uart.RDATA will be equal to the data programmed to\n              uart.WDATA"
+      },
+      {
+        "name": "line_loopback",
+        "stage": "V2",
+        "tests": [
+          "uart_loopback"
+        ],
+        "description": "- Enable line loopback and drive uart_rx with random data and random delay\n             - Check uart_tx has same value as uart_rx. There is not synchronizer register between\n               uart_rx and uart_tx during line loopback"
+      },
+      {
+        "name": "rx_noise_filter",
+        "stage": "V2",
+        "tests": [
+          "uart_noise_filter"
+        ],
+        "description": "- Use 16x fast clk to sample it, data on uart_rx need to be stable for 3 clocks,\n              otherwise, data change won't be taken\n            - Enable noise filter and drive many glitches. Each glitch doesn't lasts less than\n              3 clocks\n            - Ensure the noise will be filtered out and it doesn't affect next normal\n              transaction"
+      },
+      {
+        "name": "rx_start_bit_filter",
+        "stage": "V2",
+        "tests": [
+          "uart_rx_start_bit_filter"
+        ],
+        "description": "- Start bit should last for at least half baud clock, otherwise, it will be dropped\n            - It's always enabled. Drive start bit for less than half cycle.\n            - Ensure the start bit will be dropped"
+      },
+      {
+        "name": "tx_overide",
+        "stage": "V2",
+        "tests": [
+          "uart_tx_ovrd"
+        ],
+        "description": "Enable override control and use register programming to drive uart output\n            directly."
+      },
+      {
+        "name": "rx_oversample",
+        "stage": "V2",
+        "tests": [
+          "uart_rx_oversample"
+        ],
+        "description": "- Use 16x baud clock to sample uart rx\n            - Drive uart rx with 16 bits value, using 16x baud clock\n            - Read RX oversampled value and ensure it's same as driven value"
+      },
+      {
+        "name": "long_b2b_transfer",
+        "stage": "V2",
+        "tests": [
+          "uart_long_xfer_wo_dly"
+        ],
+        "description": "- Reduce delay to fill TX fifo and read RX fifo to ensure back2back transfers\n            - Use long back2back transfer to ensure clock difference won't be accumulated across transactions\n            - Uart monitor checks the clock offset between sender and receiver is never over 1/4 of the period"
+      },
+      {
+        "name": "stress_all",
+        "stage": "V2",
+        "tests": [
+          "uart_stress_all"
+        ],
+        "description": "- Combine above sequences in one test to run sequentially, except csr sequence and\n              uart_rx_oversample_vseq (requires zero_delays)\n            - Randomly add reset between each sequence"
+      }
+    ]
+  },
+  "sequences": {
+    "total_sequences": 17,
+    "sequence_classes": [
+      "uart_base_vseq",
+      "uart_common_vseq",
+      "uart_fifo_full_vseq",
+      "uart_fifo_overflow_vseq",
+      "uart_fifo_reset_vseq",
+      "uart_intr_vseq",
+      "uart_long_xfer_wo_dly_vseq",
+      "uart_loopback_vseq",
+      "uart_noise_filter_vseq",
+      "uart_perf_vseq",
+      "uart_rx_oversample_vseq",
+      "uart_rx_parity_err_vseq",
+      "uart_rx_start_bit_filter_vseq",
+      "uart_smoke_vseq",
+      "uart_stress_all_vseq",
+      "uart_tx_ovrd_vseq",
+      "uart_tx_rx_vseq"
+    ],
+    "sequence_files": [
+      "uart_base_vseq.sv",
+      "uart_common_vseq.sv",
+      "uart_fifo_full_vseq.sv",
+      "uart_fifo_overflow_vseq.sv",
+      "uart_fifo_reset_vseq.sv",
+      "uart_intr_vseq.sv",
+      "uart_long_xfer_wo_dly_vseq.sv",
+      "uart_loopback_vseq.sv",
+      "uart_noise_filter_vseq.sv",
+      "uart_perf_vseq.sv",
+      "uart_rx_oversample_vseq.sv",
+      "uart_rx_parity_err_vseq.sv",
+      "uart_rx_start_bit_filter_vseq.sv",
+      "uart_smoke_vseq.sv",
+      "uart_stress_all_vseq.sv",
+      "uart_tx_ovrd_vseq.sv",
+      "uart_tx_rx_vseq.sv"
+    ]
+  },
+  "tests": {
+    "total_test_classes": 1,
+    "test_classes": [
+      "uart_base_test"
+    ],
+    "test_files": [
+      "uart_base_test.sv",
+      "uart_test_pkg.sv"
+    ]
+  },
+  "assertions": {
+    "bind_files": [
+      "uart_bind.sv"
+    ],
+    "total_binds": 2,
+    "binds": [
+      {
+        "dut": "uart",
+        "module": "tlul_assert"
+      },
+      {
+        "dut": "uart",
+        "module": "uart_csr_assert_fpv"
+      }
+    ]
+  }
+}

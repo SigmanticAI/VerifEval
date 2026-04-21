@@ -1,0 +1,139 @@
+# =============================================================================
+# OpenTitan UART — verification-track benchmark target configuration
+# =============================================================================
+# Mirror of Tamzid's frameworks/veer_el2/configs/target.yaml schema, adapted
+# for the *verification* direction: generator receives RTL + natural-language
+# spec, must produce a UVM testbench (tb_top + env + agent + sequences +
+# scoreboard + coverage + SVA) that hits the rubric below.
+#
+# Paradigm contrast with frameworks/veer_el2:
+#   veer_el2 → spec      -> RTL   (evaluated vs golden TB)
+#   ot_uart  → RTL+spec  -> TB    (evaluated vs coverage + test pass)
+# =============================================================================
+
+target_name: ot_uart
+display_name: "OpenTitan UART (verification track)"
+track: verification   # NEW field — distinguishes from RTL-gen tracks
+upstream_repo: "https://github.com/lowRISC/opentitan.git"
+upstream_commit: ""   # filled in at prepare-spec time
+
+# ---------------------------------------------------------------------------
+# Filesystem locations (relative to VerifEval root unless absolute).
+# ---------------------------------------------------------------------------
+paths:
+  golden_repo:    "golden_rtl/OpenTitan/ip/uart"
+  spec_pack:      "frameworks/ot_uart/spec"
+  runs_root:      "frameworks/ot_uart/runs"
+  reports_root:   "frameworks/ot_uart/reports"
+  baseline_drop:  "frameworks/ot_uart/runs/_baseline_drop"
+  # Ground-truth reference emitted by verifagent_v2.bench.scoring.groundtruth
+  reference:      "frameworks/ot_uart/reference/uart_requirements.json"
+
+# ---------------------------------------------------------------------------
+# Spec-pack: everything the generator is allowed to see.
+# CRITICAL: the entire golden dv/ tree is EXCLUDED to prevent testbench leak.
+# ---------------------------------------------------------------------------
+spec_inputs:
+  docs:
+    - README.md
+    - doc/theory_of_operation.md
+    - doc/programmers_guide.md
+    - doc/interfaces.md
+    - doc/registers.md
+    - doc/checklist.md
+  # Register/IP definition (hjson) — spec-grade, not TB content
+  data:
+    - data/uart.hjson
+    - data/uart_testplan.hjson        # functional-coverage *targets* (not impl)
+    - data/uart_sec_cm_testplan.hjson
+  # RTL is the DUT — generator needs it to know ports, behavior, signals
+  rtl:
+    - rtl/uart.sv
+    - rtl/uart_core.sv
+    - rtl/uart_reg_pkg.sv
+    - rtl/uart_reg_top.sv
+    - rtl/uart_rx.sv
+    - rtl/uart_tx.sv
+  golden_top_module: uart
+  golden_top_file:   rtl/uart.sv
+  # Interface files we extract for port/bus-protocol matching
+  interface_files:
+    - rtl/uart.sv
+    - rtl/uart_reg_top.sv
+  # EXPLICITLY excluded from spec pack (info-leak protection)
+  excluded_paths:
+    - dv/               # golden TB — what the generator must reproduce
+    - lint/             # golden lint waivers
+    - BUILD             # Bazel
+
+# ---------------------------------------------------------------------------
+# Generation contract: UVM testbench artifacts the generator must produce.
+# A candidate is evaluable iff `required_files` all exist under
+# <run_dir>/candidate/<candidate_subdir>/.
+# ---------------------------------------------------------------------------
+generation_contract:
+  candidate_subdir: "dv"
+  required_files:
+    - "tb/tb_top.sv"
+    - "env/uart_env.sv"
+    - "env/uart_env_pkg.sv"
+    - "tests/uart_test_pkg.sv"
+  optional_files:
+    - "env/seq_lib/uart_base_vseq.sv"
+    - "env/uart_scoreboard.sv"
+    - "cov/uart_cov.sv"
+    - "sva/uart_bind.sv"
+  # Unlike veer_el2, verification has no meaningful "golden fallback" —
+  # a partial TB is almost always a hard fail (can't elaborate, can't sim).
+  allow_golden_fallback: false
+
+# ---------------------------------------------------------------------------
+# Evaluation: verification-specific checks. Missing tools → status=SKIPPED.
+# ---------------------------------------------------------------------------
+evaluation:
+  # Static
+  enable_verible_lint:           true
+  enable_verilator_lint:         true
+  enable_uvm_graph_validator:    true    # VerifAgent preflight — structural
+  # Dynamic — verification
+  enable_xsim_build:             true    # xelab (G1 gate)
+  enable_xsim_sim:               true    # xsim  (G2 gate)
+  enable_questa_build:           false   # gated by QUESTA_HOME + license
+  enable_functional_coverage:    true    # xcrg / vcover / UCDB
+  enable_structural_coverage:    true    # line + branch + toggle avg
+  enable_assertion_fire_check:   true    # count SVA + % fired
+  enable_test_pass_rate:         true    # tests_pass / tests_total
+  enable_uvm_conformance:        true    # uses verifagent_v2/diagnostics
+  # Timeouts (seconds)
+  xsim_build_timeout:            1800
+  xsim_run_timeout:              1200
+  questa_build_timeout:          1800
+  questa_run_timeout:            1200
+
+# ---------------------------------------------------------------------------
+# Gate policy: hard-zero on G1/G2 failure (VerilogEval convention).
+# Mirrors syntax_pass@1 / func_pass@1 semantics so numbers are comparable.
+# ---------------------------------------------------------------------------
+gate_policy:
+  hard_zero_on_build_fail:   true   # G1 — xelab / vopt must succeed
+  hard_zero_on_sim_fail:     true   # G2 — xsim must run + UVM_FATAL=0
+  hard_zero_threshold:       0.0
+
+# ---------------------------------------------------------------------------
+# VerifScore v1 weights (verification track) — must sum to 1.0.
+# PROVISIONAL (locked 2026-04-20, reviewable after ot_uart pilot run).
+# ---------------------------------------------------------------------------
+scoring_weights:
+  functional_coverage:  0.30
+  structural_coverage:  0.25
+  test_pass_rate:       0.20
+  assertion_density:    0.15
+  uvm_conformance:      0.10
+
+# ---------------------------------------------------------------------------
+# Reported-but-not-composite metrics (separate columns in paper tables).
+# ---------------------------------------------------------------------------
+side_metrics:
+  multi_seed_stability: true   # 1 - CV across N=3 seeds, report as ± 95% CI
+  cost_per_verifscore:  true   # $ / composite point — the "reviewer-killer"
+  iteration_count:      true   # Mode B convergence rounds (1..5 or ∞)

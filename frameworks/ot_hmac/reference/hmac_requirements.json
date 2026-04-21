@@ -1,0 +1,387 @@
+{
+  "ip_name": "hmac",
+  "generated_at": "2026-04-20T22:33:08+00:00",
+  "source_root": "/home/saislam/VerifEval/golden_rtl/OpenTitan/ip/hmac",
+  "source_paths": {
+    "env_cov": "dv/env/hmac_env_cov.sv",
+    "testplan": "data/hmac_testplan.hjson",
+    "seq_lib_dir": "dv/env/seq_lib",
+    "tests_dir": "dv/tests",
+    "sva_dir": "dv/sva"
+  },
+  "functional_coverage": {
+    "total_covergroups": 12,
+    "total_coverpoints": 27,
+    "total_crosses": 10,
+    "total_bins": 55,
+    "covergroups": [
+      {
+        "name": "nist_test_cg",
+        "sample_signature": "int vec_i",
+        "coverpoints": [
+          "vec_cg"
+        ],
+        "crosses": [],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "cfg_cg",
+        "sample_signature": "bit [TL_DW-1:0] cfg",
+        "coverpoints": [
+          "hmac_en",
+          "sha_en",
+          "endian_swap",
+          "digest_swap",
+          "key_swap",
+          "digest_size",
+          "key_length"
+        ],
+        "crosses": [
+          "hmac_en x endian_swap x digest_swap x key_swap",
+          "hmac_en x sha_en",
+          "key_length x digest_size",
+          "key_length x digest_size"
+        ],
+        "bin_count": 18,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "status_cg",
+        "sample_signature": "bit [TL_DW-1:0] sta, bit [TL_DW-1:0] cfg",
+        "coverpoints": [
+          "hmac_en",
+          "endian_swap",
+          "digest_swap",
+          "key_swap",
+          "sta_fifo_empty",
+          "sta_fifo_full",
+          "sta_fifo_depth"
+        ],
+        "crosses": [
+          "sta_fifo_empty x hmac_en x endian_swap x digest_swap x key_swap",
+          "sta_fifo_full x hmac_en x endian_swap x digest_swap x key_swap",
+          "sta_fifo_depth x hmac_en x endian_swap x digest_swap x key_swap"
+        ],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "err_code_cg",
+        "sample_signature": "bit [TL_DW-1:0] err_code",
+        "coverpoints": [
+          "hmac_errors"
+        ],
+        "crosses": [],
+        "bin_count": 7,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "msg_len_cg",
+        "sample_signature": "logic [TL_DW-1:0] msg_len_lower,\n                                              logic [TL_DW-1:0] msg_len_upper,\n                                              logic [TL_DW-1:0] cfg",
+        "coverpoints": [
+          "hmac_en",
+          "msg_len_lower_cp",
+          "msg_len_upper_cp"
+        ],
+        "crosses": [
+          "hmac_en x msg_len_lower_cp",
+          "hmac_en x msg_len_upper_cp"
+        ],
+        "bin_count": 16,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "wr_config_during_hash_cg",
+        "sample_signature": "logic wr_config_during_hash",
+        "coverpoints": [
+          "cp"
+        ],
+        "crosses": [],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "wr_key_during_hash_cg",
+        "sample_signature": "logic wr_key_during_hash",
+        "coverpoints": [
+          "cp"
+        ],
+        "crosses": [],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "wr_key_during_sha_only_cg",
+        "sample_signature": "logic wr_key_during_sha_only",
+        "coverpoints": [
+          "cp"
+        ],
+        "crosses": [],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "wr_msg_during_hash_cg",
+        "sample_signature": "logic wr_msg_during_hash",
+        "coverpoints": [
+          "cp"
+        ],
+        "crosses": [],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "trig_rst_during_hash_cg",
+        "sample_signature": "logic trig_rst_during_hash",
+        "coverpoints": [
+          "cp"
+        ],
+        "crosses": [],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "rd_digest_during_hmac_en_cg",
+        "sample_signature": "logic rd_digest_during_hmac_en",
+        "coverpoints": [
+          "cp"
+        ],
+        "crosses": [],
+        "bin_count": 1,
+        "ignore_bin_count": 0
+      },
+      {
+        "name": "save_and_restore_cg",
+        "sample_signature": "save_and_restore_e sar_ctxt,\n                                                       bit [TL_DW-1:0] cfg",
+        "coverpoints": [
+          "save_and_restore_cp",
+          "digest_size_cp"
+        ],
+        "crosses": [
+          "save_and_restore_cp x digest_size_cp"
+        ],
+        "bin_count": 6,
+        "ignore_bin_count": 0
+      }
+    ]
+  },
+  "testplan": {
+    "total_testpoints": 12,
+    "stage_distribution": {
+      "V1": 1,
+      "V2": 10,
+      "V3": 1
+    },
+    "unique_tests": [
+      "hmac_smoke",
+      "hmac_long_msg",
+      "hmac_back_pressure",
+      "hmac_test_sha256_vectors",
+      "hmac_test_sha384_vectors",
+      "hmac_test_sha512_vectors",
+      "hmac_test_hmac256_vectors",
+      "hmac_test_hmac384_vectors",
+      "hmac_test_hmac512_vectors",
+      "hmac_burst_wr",
+      "hmac_datapath_stress",
+      "hmac_error",
+      "hmac_wipe_secret",
+      "hmac_stress_all",
+      "hmac_stress_reset"
+    ],
+    "total_unique_tests": 15,
+    "testpoints": [
+      {
+        "name": "smoke",
+        "stage": "V1",
+        "tests": [
+          "hmac_smoke"
+        ],
+        "description": "HMAC smoke test performs a few round of HMAC or SHA256-ONLY transactions with the\n      procedures below:\n            - Set configuration register to randomly enable SHA256, hmac, endian_swap, and digest_swap\n            - Set interrupt enable register to randomly enable fifo_full, hmac_done, and err_code\n              interrupts\n            - Randomly read previous digest result\n            - Write key\n            - Trigger HMAC hash_start\n            - Write HMAC message fifo with message length between 0 and 64 bytes\n            - check status and interrupt\n            - Trigger HMAC hash_process\n            - After hmac_done interrupt, read and check digest data"
+      },
+      {
+        "name": "long_msg",
+        "stage": "V2",
+        "tests": [
+          "hmac_long_msg"
+        ],
+        "description": "Long_msg test is based on the smoke test. The message length is between 0 and\n            10,000 bytes."
+      },
+      {
+        "name": "back_pressure",
+        "stage": "V2",
+        "tests": [
+          "hmac_back_pressure"
+        ],
+        "description": "Back_pressure test is based on the long_msg test. The test disabled all the protocol\n            delays to make sure to have high chance of hitting the FIFO_FULL status."
+      },
+      {
+        "name": "test_vectors",
+        "stage": "V2",
+        "tests": [
+          "hmac_test_sha256_vectors",
+          "hmac_test_sha384_vectors",
+          "hmac_test_sha512_vectors",
+          "hmac_test_hmac256_vectors",
+          "hmac_test_hmac384_vectors",
+          "hmac_test_hmac512_vectors"
+        ],
+        "description": "From [NIST](https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/Secure-Hashing#shavs)\n            and [IETF](https://tools.ietf.org/html/rfc4868) websites, this test intends to use HMAC\n            and SHA test vectors to check if the reference model predicts correct data, and check if\n            DUT returns correct data."
+      },
+      {
+        "name": "burst_wr",
+        "stage": "V2",
+        "tests": [
+          "hmac_burst_wr"
+        ],
+        "description": "Burst_wr test is based on the long_msg test. The test intends to test burst write a\n            pre-defined size of message without any status or interrupt checking."
+      },
+      {
+        "name": "datapath_stress",
+        "stage": "V2",
+        "tests": [
+          "hmac_datapath_stress"
+        ],
+        "description": "Datapath_stress test is based on the long_msg test. It enabled HMAC and message length\n            is set to N*64+1 in order to stress the datapath."
+      },
+      {
+        "name": "error",
+        "stage": "V2",
+        "tests": [
+          "hmac_error"
+        ],
+        "description": "This error case runs sequences that will cause interrupt bit hmac_err to set.\n            This sequence includes:\n            - Write msg_fifo or set hash_start when sha is disabled\n            - Update secret key when hash is in process\n            - Set hash_start when hash is active\n            - Write msg before hash_start is set"
+      },
+      {
+        "name": "wipe_secret",
+        "stage": "V2",
+        "tests": [
+          "hmac_wipe_secret"
+        ],
+        "description": "This test issues wipe_secret on hmac process datapath.\n            Based on the smoke sequence, this sequence increases the message length, and randomly\n            issues wipe_secret in one of the following scenarios:\n            - Before entering HMAC secret keys.\n              This scenario represents wiping secrets when HMAC is idle.\n            - Before issuing HMAC start command.\n              This scenario represents wiping secrets when HMAC entered secret keys.\n            - Before issuing HMAC process command.\n              This scenario represents wiping secrets when HMAC is streaming in message data.\n            - Before HMAC finishes hashing process.\n              This scenario represents wiping secrets when HMAC is hashing messages and keys.\n            **Checks**:\n            The scoreboard will check if digest data are corrupted."
+      },
+      {
+        "name": "save_and_restore",
+        "stage": "V2",
+        "tests": [
+          "hmac_smoke",
+          "hmac_long_msg",
+          "hmac_back_pressure",
+          "hmac_burst_wr",
+          "hmac_stress_all",
+          "hmac_datapath_stress"
+        ],
+        "description": "Verify save & restore, which allows SW to switch between different parallel message streams.\n            - This feature is randomly exercised during most of the tests.\n            - When triggered it could go into 3 different scenarios:\n              - Stop and Continue without Saving and Restoring\n              - Save and Restore with same context\n              - Save and Restore with different contexts"
+      },
+      {
+        "name": "fifo_empty_status_interrupt",
+        "stage": "V2",
+        "tests": [
+          "hmac_smoke",
+          "hmac_test_sha256_vectors",
+          "hmac_test_sha384_vectors",
+          "hmac_test_sha512_vectors",
+          "hmac_test_hmac256_vectors",
+          "hmac_test_hmac384_vectors",
+          "hmac_test_hmac512_vectors",
+          "hmac_datapath_stress",
+          "hmac_back_pressure",
+          "hmac_long_msg",
+          "hmac_wipe_secret"
+        ],
+        "description": "Verify the FIFO empty status interrupt."
+      },
+      {
+        "name": "wide_digest_configurable_key_length",
+        "stage": "V2",
+        "tests": [
+          "hmac_smoke",
+          "hmac_long_msg",
+          "hmac_back_pressure",
+          "hmac_burst_wr",
+          "hmac_stress_all",
+          "hmac_datapath_stress",
+          "hmac_error",
+          "hmac_wipe_secret",
+          "hmac_test_sha256_vectors",
+          "hmac_test_sha384_vectors",
+          "hmac_test_sha512_vectors",
+          "hmac_test_hmac256_vectors",
+          "hmac_test_hmac384_vectors",
+          "hmac_test_hmac512_vectors"
+        ],
+        "description": "Verify wider (SHA-384 and SHA-512) digests as well as configurable key lengths.\n            - This feature is randomly exercised during most of the tests."
+      },
+      {
+        "name": "stress_reset",
+        "stage": "V3",
+        "tests": [
+          "hmac_stress_reset"
+        ],
+        "description": "Run multiple hmac_long_msg sequences with random on-the-fly reset to ensure that all\n            FSM transitions are exercised."
+      }
+    ]
+  },
+  "sequences": {
+    "total_sequences": 14,
+    "sequence_classes": [
+      "hmac_back_pressure_vseq",
+      "hmac_base_vseq",
+      "hmac_burst_wr_vseq",
+      "hmac_common_vseq",
+      "hmac_datapath_stress_vseq",
+      "hmac_directed_vseq",
+      "hmac_error_vseq",
+      "hmac_long_msg_vseq",
+      "hmac_smoke_vseq",
+      "hmac_stress_all_vseq",
+      "hmac_stress_reset_vseq",
+      "hmac_test_vectors_hmac_vseq",
+      "hmac_test_vectors_sha_vseq",
+      "hmac_wipe_secret_vseq"
+    ],
+    "sequence_files": [
+      "hmac_back_pressure_vseq.sv",
+      "hmac_base_vseq.sv",
+      "hmac_burst_wr_vseq.sv",
+      "hmac_common_vseq.sv",
+      "hmac_datapath_stress_vseq.sv",
+      "hmac_directed_vseq.sv",
+      "hmac_error_vseq.sv",
+      "hmac_long_msg_vseq.sv",
+      "hmac_smoke_vseq.sv",
+      "hmac_stress_all_vseq.sv",
+      "hmac_stress_reset_vseq.sv",
+      "hmac_test_vectors_hmac_vseq.sv",
+      "hmac_test_vectors_sha_vseq.sv",
+      "hmac_wipe_secret_vseq.sv"
+    ]
+  },
+  "tests": {
+    "total_test_classes": 1,
+    "test_classes": [
+      "hmac_base_test"
+    ],
+    "test_files": [
+      "hmac_base_test.sv",
+      "hmac_test_pkg.sv"
+    ]
+  },
+  "assertions": {
+    "bind_files": [
+      "hmac_bind.sv"
+    ],
+    "total_binds": 2,
+    "binds": [
+      {
+        "dut": "hmac",
+        "module": "tlul_assert"
+      },
+      {
+        "dut": "hmac",
+        "module": "hmac_csr_assert_fpv"
+      }
+    ]
+  }
+}
