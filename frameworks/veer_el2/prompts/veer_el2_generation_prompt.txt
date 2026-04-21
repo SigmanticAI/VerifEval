@@ -1,102 +1,169 @@
-You are an expert RTL designer.  Your task is to generate the SystemVerilog
-RTL for the **{display_name}** ({target_name}) — a small, configurable,
-in-order 32-bit RISC-V core (RV32IMC + Zicsr + Zifencei) — using *only* the
-documentation and reference material in the spec pack listed below.
+You are an expert RTL designer working inside the `VerifEval` repository at
+`/home/rocky/VerifEval`. Your task is to generate the SystemVerilog RTL for the
+**VeeR EL2 RISC-V Core** (a small, configurable, in-order 32-bit RISC-V core:
+RV32IMC + Zicsr + Zifencei) using *only* the documentation and reference
+material in the spec pack listed below.
 
 The reference (golden) implementation is the upstream open-source repo
-{upstream_repo}.  You are NOT allowed to literally clone it; instead, treat
-the spec pack as the contract and produce RTL that matches the documented
-interface and behavior.
+https://github.com/chipsalliance/Cores-VeeR-EL2.git, which is also cloned at
+`/home/rocky/VerifEval/golden_rtl/veer_el2/` for the evaluator's use. You are
+NOT allowed to look at, copy from, or grep through that golden tree, nor fetch
+the upstream repo. Treat the spec pack as the contract and produce RTL that
+matches the documented interface and behavior.
 
 ================================================================================
 SPEC PACK (everything you may consult)
 ================================================================================
 The spec pack lives at:
 
-    {spec_pack_dir}
+    /home/rocky/VerifEval/frameworks/veer_el2/spec/
 
-It contains:
+Read these files before writing any RTL:
 
-    INDEX.md              # human-readable index of every file in the pack
-    MANIFEST.json         # machine-readable manifest with sha256 hashes
-    docs/                 # rendered Markdown docs from the upstream repo
-    configs/              # configurable build-arg documentation
-    interfaces/           # the exact top-level RTL interface files (read-only;
-                          # the port lists / parameters here are NORMATIVE)
-    flists/               # authoritative Verilog file list
-    verification/INDEX.md # pointer at the golden verification flow your RTL
-                          # will be tested against (you do NOT generate the TB)
-    normalized_spec.json  # machine-readable extract: top module, ports,
-                          # parameters, module inventory
-
-For your convenience, here is the manifest (truncated):
-
-```
-{manifest_blob}
-```
+    INDEX.md                                   # human-readable index of the pack
+    MANIFEST.json                              # machine-readable manifest + sha256
+    normalized_spec.json                       # extracted top module + 254 ports
+    docs/docs__source__intro.md                # what VeeR EL2 is
+    docs/docs__source__overview.md             # block diagram & high-level
+    docs/docs__source__memory-map.md           # bus / DCCM / ICCM map
+    docs/docs__source__complex-ports.md        # top-level port narrative
+    docs/docs__source__csrs.md                 # CSR layout
+    docs/docs__source__build-args.md           # configurable knobs
+    docs/docs__source__adaptations.md          # variant adaptations
+    docs/docs__source__clocks.md               # clock/reset
+    docs/docs__source__power.md                # power conventions
+    docs/docs__source__error-protection.md     # ECC behavior
+    docs/docs__source__cache.md                # I-cache spec
+    docs/docs__source__interrupts.md           # interrupt model
+    docs/docs__source__interrupt-priority.md
+    docs/docs__source__timers.md
+    docs/docs__source__core-control.md
+    docs/docs__source__debugging.md
+    docs/docs__source__dual-core-lock-step.md
+    docs/docs__source__performance.md
+    docs/docs__source__physical-memory-protection.md
+    docs/docs__source__user-mode.md
+    docs/docs__source__verification.md         # describes the TB you're tested by
+    docs/docs__source__tests.md                # what tests exist
+    docs/docs__source__simulation-debugging.md
+    docs/docs__source__errata.md
+    docs/docs__source__tock.md
+    configs/configs__README.md                 # veer.config knobs
+    flists/design__flist                       # authoritative file list
+    flists/design__flist.lint                  # lint flist (defines + includes)
+    interfaces/el2_veer_wrapper.sv             # NORMATIVE top port list
+    interfaces/el2_veer.sv                     # NORMATIVE inner core port list
+    interfaces/el2_def.sv                      # shared types/defines
+    verification/INDEX.md                      # pointer at the golden TB
 
 ================================================================================
 TOP-LEVEL MODULE — must match exactly
 ================================================================================
-Top module name:  {top_module}
-Top module file:  {top_file}
+Top module name:  el2_veer_wrapper
+Top module file:  design/el2_veer_wrapper.sv
 
-The port list and parameter list of `{top_module}` are NORMATIVE.  You must
-expose the SAME port names and SAME directions and SAME widths as the
-interface file in `spec_pack/interfaces/`.  The downstream evaluator will
-run `verible-verilog-lint`, `verilator --lint-only`, the upstream
-`make verilator-build`, and a Vivado xelab elaboration against your output.
-A port-name / port-direction mismatch will cause the evaluation to fail.
+The port list and parameter list of `el2_veer_wrapper` are NORMATIVE. You must
+expose the SAME 254 port names, SAME directions, and SAME widths as
+`spec/interfaces/el2_veer_wrapper.sv`. The downstream evaluator runs
+`verilator --lint-only`, the upstream `make verilator-build`, the upstream
+`testbench/asm/hello_world` smoke test, and a Vivado `xelab` elaboration
+against your output. Any port-name or port-direction mismatch will cause the
+evaluation to fail.
 
 ================================================================================
 GENERATION CONTRACT — where to write your RTL
 ================================================================================
-Write your generated SystemVerilog under:
+Write your generated SystemVerilog into a fresh run directory, structured
+exactly like the golden `design/` tree:
 
-    <run_dir>/candidate/{candidate_subdir}/
+    /home/rocky/VerifEval/frameworks/veer_el2/runs/<RUN_ID>/candidate/design/
 
-mirroring the upstream `design/` layout (the same subdirectories: `dec/`,
-`exu/`, `ifu/`, `lsu/`, `dbg/`, `dmi/`, `lib/`, `include/`, `pic/`, etc).
+Pick `<RUN_ID>` as `$(date -u +%Y%m%dT%H%M%SZ)_baseline_cursor` (or similar)
+and create the directory yourself. Mirror the upstream `design/` layout —
+the same subdirectories: `dec/`, `exu/`, `ifu/`, `lsu/`, `dbg/`, `dmi/`,
+`lib/`, `include/`, `pic/`, etc.
 
 Required files (must be present, with the same filename + same module name):
-    {required_files}
+    el2_veer_wrapper.sv
 
-Optional but strongly preferred files (downstream metric awards points):
-    {optional_files}
+Optional but strongly preferred files (each one earns extra evaluation points):
+    el2_veer.sv, el2_mem.sv, el2_pic_ctrl.sv, el2_pmp.sv, el2_dma_ctrl.sv,
+    include/el2_def.sv
 
 You may also produce additional helper modules; the evaluator will compile
 them all together via the upstream `design/flist`.
 
+The evaluator will fall back to the golden RTL for any file you do NOT
+produce (so a partial generation still gets evaluated cleanly). Files you
+DO produce are the only ones that contribute to your score.
+
 ================================================================================
 EVALUATION (so you know what success looks like)
 ================================================================================
-Your output will be assessed by the VeeR EL2 benchmark in `VerifEval`.
-The pipeline runs the following checks against your candidate RTL, REUSING
-the upstream golden testbench infrastructure:
+After your RTL is in place, the framework's pipeline will assess it with
+the following checks (REUSING the upstream golden testbench infrastructure —
+do NOT generate any of this yourself):
 
-    1. Module inventory match (vs golden)
-    2. Top-module port match (names, directions)
-    3. File-level diff similarity (proxy)
-    4. Verible lint (verible-verilog-lint, all candidate files)
-    5. Verilator --lint-only against design/flist.lint
-    6. Verilator full build with the golden testbench (tb_top + test_tb_top.cpp)
-    7. Smoke run of testbench/asm/hello_world (using precompiled hex)
-    8. Vivado xelab elaboration
+    1. Module inventory match  (vs golden)                    weight 0.10
+    2. Top-module port match   (names + directions)           weight 0.10
+    3. File-level diff similarity (proxy)                     weight 0.10
+    4. Verible lint            (verible-verilog-lint)         weight 0.06
+    5. Verilator --lint-only against design/flist.lint        weight 0.09
+    6. Verilator full build    (golden tb_top + test_tb_top)  weight 0.20
+    7. Smoke run of testbench/asm/hello_world (precompiled)   weight 0.25
+    8. Vivado xelab elaboration                               weight 0.05
 
-The single best signal of correctness is: passing the upstream `hello_world`
-test under the unmodified upstream testbench.
+The single best signal of correctness is: **passing the upstream
+`hello_world` test under the unmodified upstream testbench**.
 
 ================================================================================
 WHAT YOU MUST NOT DO
 ================================================================================
+* Do NOT read, list, copy from, or grep through `/home/rocky/VerifEval/golden_rtl/`.
+  That directory is the golden reference the evaluator scores against; touching
+  it invalidates the comparison.
 * Do NOT modify the testbench, the Makefile, the lint flists, the configs,
-  or anything outside `<run_dir>/candidate/{candidate_subdir}/`.
+  or anything outside your own `<run>/candidate/design/`.
 * Do NOT invent new top-level ports.
 * Do NOT fetch the upstream repo or any extra context beyond the spec pack.
 * Do NOT generate a verification environment / UVM / SVA — that is out of
   scope for this benchmark; testing is performed by the GOLDEN testbench
   against your generated RTL.
 
-When you are done, ensure that the file `el2_veer_wrapper.sv` (or the
-`{top_file}` listed above) exists in your candidate directory and that its
-top module is named exactly `{top_module}` with the documented ports.
+================================================================================
+HOW TO RUN AND REPORT BACK (do this when you finish writing RTL)
+================================================================================
+After your RTL is in place under `<run>/candidate/design/`, run the
+following commands and report the resulting score back to me:
+
+    cd /home/rocky/VerifEval
+
+    # Optional sanity check that all required tools are present
+    python3 frameworks/veer_el2/scripts/veer_bench.py show-tools
+
+    # Run the full evaluation against the run dir you created above
+    # (replace <RUN_ID> with the actual run id you chose)
+    python3 frameworks/veer_el2/scripts/veer_bench.py evaluate --run <RUN_ID>
+
+    # Aggregate this run with any prior runs into reports/
+    python3 frameworks/veer_el2/scripts/veer_bench.py report
+
+After those commands finish, report back to me:
+
+    1. The final score line (e.g. `Score: 87.4 / 100  (over weight 0.89)`).
+    2. The PASS/FAIL/PARTIAL/SKIPPED status of each individual check.
+    3. The path to the run directory: `frameworks/veer_el2/runs/<RUN_ID>/`
+    4. The path to the per-run summary:
+       `frameworks/veer_el2/runs/<RUN_ID>/eval/summary.md`
+    5. The path to the aggregate report: `frameworks/veer_el2/reports/report.md`
+    6. For any failed checks, the first ~20 lines of the corresponding
+       `frameworks/veer_el2/runs/<RUN_ID>/eval/*.log`.
+
+If a check shows `SKIPPED` because a tool (e.g. Vivado, verible) is missing,
+that is fine — note it but do not try to install the tool. If a check shows
+`FAIL`, briefly speculate (1-2 sentences) on what in your RTL likely caused it.
+
+When you are done, ensure that the file
+`/home/rocky/VerifEval/frameworks/veer_el2/runs/<RUN_ID>/candidate/design/el2_veer_wrapper.sv`
+exists and that its top module is named exactly `el2_veer_wrapper` with the
+documented 254 ports.

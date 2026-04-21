@@ -1,0 +1,330 @@
+################################################################################
+#  VerifEval — Cursor / Claude Code baseline prompt
+#  ONE-WORD KNOB: change DUT and the rest of the prompt re-orients itself.
+#  Compatible DUTs (each is a directory under /home/rocky/VerifEval/golden_rtl/):
+#       spi      fifo      axi      i2c      uart      ibex
+#
+#  How to use:
+#    1. Edit the single line below — replace "spi" with one of the names above.
+#    2. Paste this entire file into Cursor (or Claude Code) as the user message.
+#    3. Let the agent run end-to-end (it will inspect golden RTL, generate the
+#       verification environment, build it, run it, and report a coverage table
+#       in the exact format the VerifEval paper uses).
+#
+#  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+       DUT = spi
+#  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#
+#  Anywhere in the prompt that you see ${DUT} (or the literal token DUT in a
+#  path), substitute the value above. Treat ${DUT} as a textual macro: e.g.
+#  if DUT = fifo, then golden_rtl/${DUT} means golden_rtl/fifo.
+################################################################################
+
+You are an expert hardware verification engineer working inside the VerifEval
+repository at `/home/rocky/VerifEval`. Your job is to produce a complete,
+runnable SystemVerilog/UVM verification environment for the DUT named ${DUT},
+using ONLY the golden RTL files in `golden_rtl/${DUT}/` as the design
+specification. The output must be evaluable by the same VerifEval pipeline
+described in the paper "VerifEval: End-to-End Evaluation of AI-Generated
+Hardware Verification" (lint + simulation coverage + trace coverage + mutation
+sensitivity + rubric).
+
+================================================================================
+1. DESIGN UNDER TEST  (auto-derived from ${DUT})
+================================================================================
+
+Golden RTL directory (read-only — this is your spec):
+
+    /home/rocky/VerifEval/golden_rtl/${DUT}/
+
+Before writing any code, do the following discovery pass and write down what
+you find inside `design_spec.json` (see §3):
+
+  a. List every `.v` / `.sv` / `.svh` file in `golden_rtl/${DUT}/`.
+  b. Identify the TOP module. Heuristics, in priority order:
+        - a file ending in `_top.v` / `_top.sv`
+        - a `filelist.txt` / `*.f` / `README*` file naming the top
+        - the module that instantiates the most other modules in the dir
+        - for `${DUT} == ibex`: top is `ibex_core` (file
+          `golden_rtl/ibex/rtl/ibex_core.sv`, see also `ibex_core.f`)
+        - for `${DUT} == fifo`: there is no single top — pick
+          `generic_fifo_sc_a` as the canonical DUT (synchronous, single-clock,
+          standard interface). State this choice explicitly in design_spec.json.
+        - for `${DUT} == axi`: top is `dma_axi32` (see `filelist.txt` and
+          `README.txt` in that directory).
+  c. Extract the top module's full port list (name, direction, width,
+     parameterization). Do NOT invent ports.
+  d. Extract module parameters and any compile-time defines that affect the
+     interface (e.g. data width, address width, FIFO depth).
+  e. Recover the high-level behavior from in-file header comments and any
+     `README*` / `*.txt` in the directory. Summarize it.
+
+You are NOT allowed to:
+  - read anything under `sample_outputs/verifagent_${DUT}/` (or any other
+    `sample_outputs/*` directory) — that is a reference solution from another
+    tool and would contaminate the comparison.
+  - read anything under `verif/${DUT}/` — that is a previous VerifEval run.
+  - read anything under `baseline_comparison/` — that is a previous baseline.
+  - fetch upstream code (no `git clone`, no web fetches). The golden RTL on
+    disk is the only ground truth.
+  - copy the golden RTL into your output. The DUT files stay where they are
+    and are referenced from the testbench by their absolute paths.
+
+================================================================================
+2. WHERE TO WRITE YOUR OUTPUT
+================================================================================
+
+Pick a fresh run id and create exactly this directory structure:
+
+    RUN_ID = ${DUT}_<MODEL_TAG>_<UTC_TIMESTAMP>
+             # e.g.  spi_opus46_20260420T182530Z
+             # MODEL_TAG should be a short, lowercase, hyphen-free tag of the
+             # model you (the assistant) are running as: opus46, sonnet45,
+             # gpt5, etc. If you do not know, use `cursor`.
+
+    OUTPUT_ROOT = /home/rocky/VerifEval/baseline_comparison/runs/${RUN_ID}/
+
+Required layout under OUTPUT_ROOT (mirrors the layout the VerifEval rubric
+scorer in `evaluator/runner.py` already understands):
+
+    ${RUN_ID}/
+    ├── design_spec.json          # what you extracted from golden_rtl/${DUT}/
+    ├── verification_plan.json    # tests, assertions, covergroups you intend
+    ├── tb/
+    │   ├── tb_top.sv             # top-level testbench module, instantiates DUT
+    │   ├── agents/
+    │   │   ├── ${DUT}_if.sv      # SV interface(s) wrapping DUT signals
+    │   │   └── ${DUT}_agent.sv   # UVM agent (driver + monitor + sequencer)
+    │   ├── env/
+    │   │   └── env.sv            # UVM env: agent + scoreboard + coverage hookup
+    │   └── tests/
+    │       └── tests.sv          # one base test + at least 4 directed/random tests
+    ├── assertions/
+    │   └── ${DUT}_assertions.sv  # bound SVA module asserting all REQs from spec
+    ├── coverage/
+    │   └── ${DUT}_coverage.sv    # functional covergroups (cross + bins)
+    ├── Makefile                  # see §5
+    ├── filelist.f                # ordered compile list (DUT files first, then TB)
+    └── README.md                 # one-page how-to-run + which files are which
+
+If a directory does not exist, create it. Use `mkdir -p` from the shell as
+needed. DO NOT write any of these files outside OUTPUT_ROOT.
+
+================================================================================
+3. design_spec.json   (machine-readable spec extraction)
+================================================================================
+
+Schema (every field is REQUIRED — leave value empty/null only if truly N/A):
+
+  {
+    "dut": "${DUT}",
+    "top_module": "<module name you chose>",
+    "top_file": "<absolute path under golden_rtl/${DUT}/>",
+    "all_design_files": ["<abs path>", ...],
+    "parameters": [{"name": "...", "default": "...", "description": "..."}],
+    "ports": [
+      {"name": "...", "dir": "input|output|inout", "width": "...",
+       "description": "..."}
+    ],
+    "clocks":  ["clk", ...],
+    "resets":  [{"name": "rst_n", "polarity": "active_low|active_high",
+                 "sync": "sync|async"}],
+    "protocols": ["AXI4", "APB", "SPI", ...],   # whatever applies
+    "requirements": [
+      {"id": "REQ-001", "text": "<one-line behavioral requirement>"},
+      ...
+    ],
+    "fsms":   [{"name": "...", "states": ["..."]}],   # if any
+    "notes":  "<free-form, e.g. open questions, ambiguities>"
+  }
+
+Aim for at least 8 functional REQs. Do not pad — every REQ must map to an
+assertion (see §4) AND to a coverage bin or test (see §4) so it is actually
+checked end-to-end.
+
+================================================================================
+4. verification_plan.json
+================================================================================
+
+Schema:
+
+  {
+    "tests": [
+      {"name": "${DUT}_basic_test",      "description": "...",
+       "checks": ["REQ-001", "REQ-002"]},
+      {"name": "${DUT}_random_test",     "description": "...", "checks": [...]},
+      {"name": "${DUT}_corner_test",     "description": "...", "checks": [...]},
+      {"name": "${DUT}_negative_test",   "description": "<must intentionally
+                                          drive an illegal/edge condition and
+                                          confirm DUT and assertions react
+                                          correctly>", "checks": [...]},
+      {"name": "${DUT}_stress_test",     "description": "...", "checks": [...]}
+    ],
+    "assertions": [
+      {"name": "...", "kind": "immediate|concurrent|cover",
+       "binds_to": "<module>", "checks": "REQ-XXX",
+       "description": "..."}
+    ],
+    "covergroups": [
+      {"name": "...", "binds_to": "<module>",
+       "coverpoints": [{"name": "...", "expr": "...",
+                        "bins": ["..."]}],
+       "crosses": ["..."]}
+    ]
+  }
+
+Every REQ in design_spec.json MUST appear in at least one of:
+   tests[].checks    OR    assertions[].checks    OR    a covergroup bin.
+
+================================================================================
+5. Makefile  (must support the metrics the VerifEval paper measures)
+================================================================================
+
+The Makefile must define BOTH a Questa flow (preferred — same as paper) and a
+Verilator flow (fallback for environments without a commercial license). Both
+flows must accept the same `make compile`, `make sim`, `make coverage`,
+`make report` targets. Use a `SIM ?= questa` switch.
+
+Required targets:
+
+  make compile     # vlog/vlib (Questa) or verilator --binary (Verilator)
+  make sim         # run all 5 tests, dump waves to waves/${DUT}.vcd
+  make coverage    # run with coverage instrumented:
+                   #   Questa:    vsim -coverage -do "coverage save ..."
+                   #              vcover report -details
+                   #   Verilator: --coverage --trace-fst then verilator_coverage
+  make lint        # verible-verilog-lint over tb/, agents/, assertions/
+  make report      # write reports/coverage_summary.json with EXACTLY these keys:
+                   #   {
+                   #     "dut": "${DUT}",
+                   #     "simulator": "questa|verilator",
+                   #     "metrics": {
+                   #        "assertions_pct": <float 0-100>,
+                   #        "branches_pct":   <float 0-100>,
+                   #        "conditions_pct": <float 0-100>,
+                   #        "directives_pct": <float 0-100>,
+                   #        "statements_pct": <float 0-100>,
+                   #        "toggles_pct":    <float 0-100>,
+                   #        "overall_pct":    <float 0-100>
+                   #     },
+                   #     "tests_run":    <int>,
+                   #     "tests_passed": <int>,
+                   #     "tests_failed": <int>,
+                   #     "log":          "<relative path to sim log>"
+                   #   }
+  make clean
+
+The 7 keys under `metrics` MUST always be present (use null only if a metric
+is not produced by the chosen simulator). They mirror the columns of Table 1
+in the VerifEval paper so the result can be dropped straight into the
+benchmark report.
+
+The Makefile should pick up the DUT files like this (no hard-coded list):
+
+    DUT_DIR  ?= /home/rocky/VerifEval/golden_rtl/${DUT}
+    DUT_SRCS := $(shell find $(DUT_DIR) -maxdepth 2 -name "*.v" -o -name "*.sv")
+
+If the golden tree contains a `filelist.txt` or `*.f`, prefer that over the
+shell-glob.
+
+================================================================================
+6. ENVIRONMENT EXPECTATIONS  (degrade gracefully)
+================================================================================
+
+You may assume these tools MIGHT be on PATH; check at the top of the Makefile
+and skip-with-warning anything that is missing — never fail hard on a missing
+tool:
+
+    questa:  vlog, vlib, vsim, vcover         (preferred for the paper)
+    verilator + verilator_coverage            (open-source fallback)
+    verible-verilog-lint                      (lint stage)
+    yosys / sby                               (optional, for §7 mutation hooks)
+
+Detect with `command -v <tool>`. If Questa is missing, set `SIM := verilator`
+and continue. If Verilator is also missing, the `make sim` target should print
+a clear message and exit 0 so the rest of the pipeline can still score
+artifacts (lint, structure, JSON).
+
+================================================================================
+7. OPTIONAL: mutation + formal hooks  (paper §3.7)
+================================================================================
+
+If you have time after the main flow is green, add a `make mutate` target
+that:
+  - generates 10 trivial RTL mutants of the top module (single-bit flips of
+    constants, swapped operators, dropped conditions) into `mutants/m_<i>.v`
+  - re-runs the full test suite against each mutant
+  - writes `reports/mutation_summary.json`:
+        {"mutants_generated": 10, "killed": <int>, "score": <float 0-1>}
+
+This is OPTIONAL — do not let it block §1–§6.
+
+================================================================================
+8. RUN IT
+================================================================================
+
+After you have written every file, actually execute the flow from a shell:
+
+    cd ${OUTPUT_ROOT}
+    make lint      2>&1 | tee logs/lint.log     || true
+    make compile   2>&1 | tee logs/compile.log
+    make sim       2>&1 | tee logs/sim.log
+    make coverage  2>&1 | tee logs/coverage.log || true
+    make report
+
+Inspect `reports/coverage_summary.json`. If `tests_failed > 0` or `compile`
+exited non-zero, iterate on your TB until either it is green or you have
+clearly diagnosed why (record the diagnosis in README.md).
+
+================================================================================
+9. WHAT TO REPORT BACK TO ME  (paste this block at the end of your turn)
+================================================================================
+
+When you are done, reply to me with:
+
+  1. The absolute path of the run directory you created:
+        /home/rocky/VerifEval/baseline_comparison/runs/${RUN_ID}/
+
+  2. A markdown table in EXACTLY the format below (this matches Table 1 of the
+     VerifEval paper so it drops straight into the results section):
+
+     | Coverage Metric | ${DUT}_<MODEL_TAG> |
+     |-----------------|--------------------|
+     | Assertions      |  XX.XX%            |
+     | Branches        |  XX.XX%            |
+     | Conditions      |  XX.XX%            |
+     | Directives      |  XX.XX%            |
+     | Statements      |  XX.XX%            |
+     | Toggles         |  XX.XX%            |
+     | **Overall**     | **XX.XX%**         |
+
+  3. Test summary:  `<passed>/<total> tests passed, <failed> failed`.
+
+  4. Which simulator was actually used (questa or verilator) and why
+     (e.g. "questa not on PATH, fell back to verilator").
+
+  5. The first ~20 lines of any failing log (compile.log / sim.log) verbatim,
+     plus a 1–2 sentence root-cause hypothesis per failure.
+
+  6. A list of every requirement (REQ-XXX) from design_spec.json that is NOT
+     yet covered by an assertion or test. This is your honesty channel — do
+     not silently drop REQs.
+
+================================================================================
+10. CONSTRAINTS RECAP  (do not violate)
+================================================================================
+
+  - Do not read sample_outputs/, verif/, or baseline_comparison/ (other than
+    writing into baseline_comparison/runs/${RUN_ID}/).
+  - Do not modify anything under golden_rtl/ — it is read-only spec.
+  - Do not invent DUT ports; every signal in the testbench interface must
+    correspond to a real port on the chosen top module.
+  - Do not rely on tools that are not installed; degrade gracefully.
+  - Output files must be UTF-8, must be syntactically valid SystemVerilog,
+    and must compile under the chosen simulator with zero errors before you
+    are allowed to declare victory.
+  - All paths in Makefile / filelist.f must be absolute or anchored at
+    OUTPUT_ROOT — no `~` and no relying on the shell's CWD.
+
+Now begin.  First action: list the files in `golden_rtl/${DUT}/`, identify
+the top module per §1, and create OUTPUT_ROOT. Then proceed top-to-bottom.

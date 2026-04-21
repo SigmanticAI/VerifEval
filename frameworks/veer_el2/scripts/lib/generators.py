@@ -36,31 +36,27 @@ PROMPT_TEMPLATE_PATH_REL = "prompts/veer_el2_generation_prompt.txt"
 
 
 def render_prompt(target: Target, spec_pack_dir: Path) -> str:
-    """Build the full text prompt sent to a generator.
+    """Return the full text prompt sent to a generator.
 
-    Combines the on-disk template with the resolved spec-pack manifest
-    so the generator knows exactly which files to consult.
+    The on-disk file `prompts/veer_el2_generation_prompt.txt` is now a fully
+    pre-rendered, paste-ready prompt with concrete absolute paths (so a user
+    can drop it straight into Cursor/Claude Code without any substitution).
+    For VerifAgent invocations we use the same literal text — the spec pack
+    path inside the prompt is the canonical one (`spec_pack_dir` is checked
+    against it and a warning is logged if they disagree).
     """
     tmpl_path = target.framework_dir / PROMPT_TEMPLATE_PATH_REL
     if not tmpl_path.exists():
         raise FileNotFoundError(f"prompt template missing: {tmpl_path}")
-    template = tmpl_path.read_text()
-
-    manifest_path = spec_pack_dir / "MANIFEST.json"
-    manifest_blob = manifest_path.read_text() if manifest_path.exists() else "{}"
-
-    return template.format(
-        target_name=target.name,
-        display_name=target.display_name,
-        upstream_repo=target.upstream_repo,
-        spec_pack_dir=str(spec_pack_dir),
-        candidate_subdir=target.candidate_subdir(),
-        required_files=", ".join(target.required_files()),
-        optional_files=", ".join(target.optional_files()),
-        top_module=target.golden_top_module,
-        top_file=target.golden_top_file,
-        manifest_blob=manifest_blob[:8000],
-    )
+    text = tmpl_path.read_text()
+    expected = str(target.spec_pack)
+    if expected not in text:
+        # Best-effort substitution if someone customized the spec pack location.
+        text = text.replace(
+            "/home/rocky/VerifEval/frameworks/veer_el2/spec/",
+            expected.rstrip("/") + "/",
+        )
+    return text
 
 
 # ---------------------------------------------------------------------------
