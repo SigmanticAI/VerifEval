@@ -110,11 +110,10 @@ def run_verifagent(
         py = sys.executable
 
     cmd: List[str] = [
-        py, "-m", "verifagent_v2.cli", "generate",
+        py, "-m", "verifagent_v2.cli", "generate-rtl",
         "--spec", str(spec_pack_dir / "normalized_spec.json"),
         "--output-dir", str(agent_out),
         "--prompt", prompt[:4000],  # CLI takes prompt as a single arg
-        "--max-iterations", "1",
     ]
     if model:
         os.environ["VERIFAGENT_MODEL"] = model
