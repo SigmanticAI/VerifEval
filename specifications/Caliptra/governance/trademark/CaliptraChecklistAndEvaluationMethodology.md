@@ -1,0 +1,555 @@
+# Caliptra Checklist and Evaluation Methodology
+
+## Version 1.0
+
+# Table of Contents
+- [Introduction](#introduction)
+- [Caliptra Documentation](#caliptra-documentation)
+- [Checklist Summary](#checklist-summary)
+- [Part I: Common Requirements](#part-i-common-requirements)
+- [Part II: Caliptra Core Trademark - Additional Requirements (Passive Mode)](#part-ii-caliptra-core-trademark--additional-requirements-passive-mode)
+- [Part III: Caliptra Subsystem Trademark - Additional Requirements](#part-iii-caliptra-subsystem-trademark--additional-requirements)
+- [Part IV: Caliptra Subsystem with OCP L.O.C.K. Trademark - Additional Requirements](#part-iv-caliptra-subsystem-with-ocp-lock-trademark---additional-requirements)
+
+# Introduction
+
+The **Caliptra Checklist and Evaluation Methodology** document serves as a comprehensive guide for ensuring the secure and correct integration of the Caliptra intellectual property (IP) into a system-on-chip (SoC). Caliptra is a hardware root-of-trust (RoT) IP designed to provide foundational security services within a computing system. Proper integration of Caliptra is crucial to enabling these security services and maintaining the overall security posture of the final product.
+
+This document outlines detailed requirements and evaluation methodologies across various domains, including asset management, interface implementations, and secure process adherence. The primary goals are to:
+
+* **Ensure security compliance:** Provide clear and testable requirements that align with industry best practices and standards, such as those from NIST and FIPS.  
+    
+* **Facilitate evaluation:** Offer comprehensive evaluation methodologies that allow for consistent and thorough assessment of compliance with the checklist items.
+
+* **Promote clarity and specificity:** Avoid vague language by specifying exact requirements, thereby making the checklist actionable and reducing ambiguity during the evaluation process.
+
+* **Address critical security areas:** Focus on key areas that have significant impact on the security of Caliptra integration, such as cryptographic key management, secure boot processes, and access control mechanisms.
+
+* **Enhance integration efficiency:** By providing a clear roadmap of requirements, the document aims to streamline the integration process and assist manufacturers in proactively addressing security considerations.
+
+The checklist items have been developed through a thorough analysis of:
+
+* **Caliptra specifications:** Reviewing the Caliptra IP documentation to extract relevant requirements and ensure alignment with the intended security features.  
+    
+* **Industry standards and best practices:** Incorporating guidelines from recognized standards to enhance the robustness of security mechanisms.
+
+* **Feedback and collaboration:** Integrating input from various stakeholders, including security experts and industry professionals, to refine the checklist and address potential gaps.
+
+* **Asset-based analysis:** Identifying critical assets within the Caliptra integration context and tailoring requirements to protect these assets effectively.
+
+By adhering to the checklist and employing the specified evaluation methodologies, manufacturers and evaluators can work collaboratively to ensure that the Caliptra integration meets stringent security requirements, thereby bolstering the trustworthiness of the final product.
+
+### Key Words
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
+
+**Requirements listed below that are marked with an asterisk (*), may be exempted if there is sufficent, documented, and approved justification otherwise.**
+
+# Caliptra Documentation
+
+The Caliptra Specification is maintained within the [ChipsAlliance Caliptra repository](https://github.com/chipsalliance/Caliptra/blob/main/doc/Caliptra.md).  This is a live link. Each generation, the main specification will be updated and the older specifications will be maintained for reference for designs based on that specification.  For example, here is the specification for [Caliptra 1.X](https://github.com/chipsalliance/Caliptra/blob/main/doc/caliptra_1x/Caliptra.md).
+
+The [HW specification](https://github.com/chipsalliance/caliptra-rtl/blob/main/docs/CaliptraHardwareSpecification.md) and [HW integration specification](https://github.com/chipsalliance/caliptra-rtl/blob/main/docs/CaliptraIntegrationSpecification.md) also have their own live links. For previous versions of the hardware specification, download the official release from [Releases](https://github.com/chipsalliance/caliptra-rtl/releases) and review the corresponding documentation in the `docs` folder.
+
+This checklist is built from these specifications with the goal to help ensure that Caliptra is integrated correctly within a design. To demonstrate compliance with this checklist, vendors must provide necessary collateral to security auditors, which may include documentation such as: integrated RTL, synthesized netlist reports, GLS FEV reports, SoC boot diagrams, etc. Some integration requirements may not be verified through tool reports or through code analysis. For such requirements, integrators must provide documentation summarizing plans and procedures (for example, generation of an obfuscation key in compliance with NIST).
+
+# Checklist Summary
+
+The following is a consolidated list of all requirements and recommendations to ensure comprehensive coverage.
+Evaluators MUST apply **Part I** to all integrations, plus the part corresponding to the
+elected trademark: **Part II** for the *Caliptra Core Trademark (Passive Mode)*,
+**Part III** for the *Caliptra Subsystem Trademark*, or **Part IV** for the *Caliptra
+Subsystem with OCP L.O.C.K. Trademark*.
+
+**Part I: Common Requirements**
+
+1. **Assets**
+   * UDS Seed and Field Entropy
+   * FW Authentication Keys
+   * IDEVID Generation and Endorsement Flow
+   * Device Keys
+   * Fuses
+2. **Interfaces**
+   * Mailbox Interface Compliance
+   * Debug Interface Management
+   * Hardware Implementation
+3. **SoC Root of Trust (RoT)**
+   * Boot and Initialization Process
+   * Caliptra Privileged USER Management
+   * Random Number Generator (RNG) Implementation
+4. **Specific Functionality**
+   * Caliptra Life Cycle Selection and State Handling
+   * Error Handling
+   * Log Functionality in SoC
+5. **Secure Processes**
+   * Development Process - Testing and Verification
+   * Production Process - Debugging Controls
+   * Production Process - Flaw Remediation Process
+
+**Part II: Caliptra Core Trademark - Additional Requirements (Passive Mode)**
+
+1. **RTL Configuration**
+   * Core Mode
+   * TRNG Configuration (Core)
+2. **Interface Connectivity**
+   * DMA Assist Engine Isolation
+   * SHA Accelerator Access Restriction
+   * Subsystem Strap Isolation
+3. **Secure Processes**
+   * Development Process - Integrity of Hardware and ROM
+
+**Part III: Caliptra Subsystem Trademark - Additional Requirements**
+
+1. **Interface Connectivity**
+   * AXI DMA Engine Connectivity
+   * SHA Accelerator Access Restriction (Subsystem)
+   * Subsystem Straps Configuration
+2. **OCP Streaming Boot**
+3. **Production Debug Unlock**
+4. **Subsystem Secret Signal Protection**
+5. **Subsystem Fuse Map**
+6. **SoC Root of Trust (RoT)**
+   * Boot and Initialization Process
+7. **Secure Processes**
+   * Development Process - Integrity of Hardware and ROM
+
+**Part IV: Caliptra Subsystem with OCP L.O.C.K. Trademark - Additional Requirements**
+
+1. **OCP L.O.C.K. Specification Compliance**
+
+# Part I: Common Requirements
+
+The requirements in this section apply to **all** Caliptra integrations,
+regardless of whether the integrator is pursuing the Caliptra Core Trademark
+(Passive Mode), the Caliptra Subsystem Trademark, or the Caliptra Subsystem with
+OCP L.O.C.K. Trademark.
+
+## Assets
+
+### *UDS Seed and Field Entropy*
+
+#### *Generation and Provisioning*
+
+* **Checklist Item:**  
+  * **Requirement:** The UDS seed MUST be statistically uniquely generated using a cryptographically secure random number generator (CSRNG) seeded by an entropy source compliant with [NIST Entropy Source Certification](https://csrc.nist.gov/projects/cryptographic-module-validation-program/entropy-validations) SP 800-90B.
+  * **Evaluation Methodology:** Manufacturers MUST provide documentation demonstrating compliance with applicable standards for entropy and random number generation.   
+* **Checklist Item:**  
+  * **Requirement:** The confidentiality and integrity of the UDS seed MUST be protected during generation, storage, and provisioning. Access to this asset must be strictly controlled, and any temporary storage MUST be sanitized after use.  
+  * **Evaluation Methodology:** Manufacturers MUST detail the security measures employed during the handling of the UDS seed, including access controls, secure storage practices, and sanitization procedures.  
+* **Checklist Item:**  
+  * **Recommendation:** Field Entropy SHOULD be generated on die, and not be exposed outside the die.  
+  * **Evaluation Methodology**: Manufacturers SHOULD detail the generation process for, and document exposure of field entropy.
+
+#### *Access to Fuses*
+
+* **Checklist Item:**  
+  * **Requirement*:** Access to the fuses containing the UDS seed and field entropy MUST be restricted exclusively to the mechanisms needed for loading these values into Caliptra's fuse registers. No other components or firmware shall have read access, except for essential hardware functions like fuse sense and distribution logic.  
+  * **Evaluation Methodology:** Manufacturers MUST provide architectural diagrams and RTL code excerpts demonstrating that only authorized hardware mechanisms can access these fuses.
+
+### *FW Authentication Keys*
+
+* **Checklist Item:**  
+  * **Requirement:** Firmware authentication keys MUST be generated in accordance with [NIST SP 800-208](https://csrc.nist.gov/pubs/sp/800/208/final) and [FIPS 186-5](https://csrc.nist.gov/pubs/fips/186-5/final).
+  * **Requirement:** Signature generation operations using the firmware authentication key MUST only be allowed by authorized entities.
+  * **Requirement:** Firmware authentication keys MUST be stored in a manner that prevents disclosure of private key material. The manner of storage MUST only permit keys to be exported or copied to systems that enforce the same controls on usage and disclosure of the key.
+  * **Requirement:** Signature generation operations using the firmware authentication key MUST be logged.
+  * **Recommendation:** Firmware authentication keys SHOULD be created and stored in a Hardware Security Module (HSM).
+  * **Recommendation:** Firmware authentication keys SHOULD require multi-party authentication to perform signing operations.
+  * **Evaluation Methodology:** Manufacturers MUST describe their key management practices, including storage solutions, access controls, and procedures to prevent unauthorized usage.
+
+### *IDEVID Generation and Endorsement Flow*
+
+#### *CSR Handling*
+
+* **Checklist Item:**  
+  * **Requirement:** Handling and transmission of the IDevID and any other CSRs generated by Caliptra MUST ensure that only authentic endorsement requests are signed by the CA.  
+  * **Evaluation Methodology:** Manufacturers MUST outline the mechanisms used to protect the CSR during transmission from Caliptra to the endorsement environment, including cryptographic protections and secure channels.
+
+#### *Certificate Provisioning*
+
+* **Checklist Item:**  
+  * **Requirement:** The IDEVID certificates, including CA certificates, MUST adhere to specified formats and cryptographic standards (e.g. key sizes and algorithms as per NIST guidelines). Acceptable algorithms and key strengths MUST meet or exceed the security strength that the Caliptra IP produces. These requirements apply to the entire CA cert chain.
+  * **Evaluation Methodology:** Manufacturers MUST demonstrate compliance with the required formats and standards by providing examples of the certificate chain that is created.
+
+### *Device Keys*
+
+#### *Generation and Handling*
+
+* **Checklist Item:**  
+  * **Requirement:** The obfuscation key ([cptra_obf_key](https://github.com/chipsalliance/caliptra-rtl/blob/main/docs/CaliptraIntegrationSpecification.md#interface)) MUST be generated using a method that ensures 256 bits of entropy, such as an [ESV](https://csrc.nist.rip/Projects/cryptographic-module-validation-program/entropy-validations/esv) certified entropy source or an on-die Physically Unclonable Function (PUF) that is compliant with industry standards. 
+  * **Requirement:** When driven by an ECO rather than a PUF access to the key value MUST be restricted to only authorized entities, and MUST be stored in a manner that prevents disclosure. 
+  * **Requirement:** Design, test, manufacturing, and other processes that require the unencrypted key value MUST NOT store or retain it past completion.
+  * **Evaluation Methodology:** Manufacturers MUST provide documentation on the generation method for the obfuscation key, including entropy measurements, applicable standards compliance, and, where the key is delivered via ECO, the manufacturing controls used to keep the key confidential.
+* **Checklist Item:**  
+  * **Requirement:** The CSR HMAC key ([cptra_csr_hmac_key](https://github.com/chipsalliance/caliptra-rtl/blob/main/docs/CaliptraIntegrationSpecification.md#interface)) MUST be generated using a method that provides full entropy across its 512-bit width, such as an [ESV](https://csrc.nist.rip/Projects/cryptographic-module-validation-program/entropy-validations/esv) certified entropy source.
+  * **Requirement:** Access to the key value MUST be restricted to only authorized entities, and MUST be stored in a manner that prevents disclosure.
+  * **Requirement:** Design, test, manufacturing, and other processes that require the unencrypted key value MUST NOT store or retain it past completion except as required for certificate issuance.
+  * **Evaluation Methodology:** Manufacturers MUST provide documentation on the generation method for the CSR HMAC key, including entropy measurements, applicable standards compliance, and the manufacturing controls used to keep the key confidential.
+    * **Example:** Establish the CSR HMAC Key in an HSM. After the ECO is completed plaintext copies should be destroyed.
+* **Checklist Item:**  
+  * **Requirement:** The obfuscation key ([cptra_obf_key](https://github.com/chipsalliance/caliptra-rtl/blob/main/docs/CaliptraIntegrationSpecification.md#interface)) and CSR HMAC key ([cptra_csr_hmac_key](https://github.com/chipsalliance/caliptra-rtl/blob/main/docs/CaliptraIntegrationSpecification.md#interface)) MUST NOT be accessible (readable or modifiable) to firmware or any on-chip non-Caliptra entities, including preventing oracle attacks. Both keys MUST NOT be on any scannable path, and the key signals themselves MUST NOT be observable outside of Caliptra through debug, trace, scandump, or any other on-die or off-die mechanism.
+  * **Evaluation Methodology:** Manufacturers MUST demonstrate, through architectural documentation, security analyses, and verifiable testing, that the obfuscation key and CSR HMAC key are inaccessible to firmware and other unauthorized components and are not exposed on scan, debug, or trace paths. Acceptable evidence SHOULD cover:
+    * **DFT intent.** Synthesis or DFT-tool constraint files demonstrating that the flops latching each key (for example, `cptra_scan_mode_Latched_d/f`, `field_storage.internal_obf_key`, and `cptra_csr_hmac_key_reg`) are explicitly excluded from scan insertion.
+    * **DFT result.** Scan-insertion reports, scan-chain stitching reports, or gate-level netlist diffs confirming that the named cells are absent from every scan chain in the final taped-out netlist.
+    * **Verification result.** Gate-level simulation with scan enable asserted showing that key state cannot be observed at any scan output, debug interface, or trace port.
+
+### *Fuses*
+
+#### *Access Control*
+
+* **Checklist Item:**  
+  * **Requirement*:** Fuses containing Caliptra secrets MUST NOT be readable by any mutable code in the SoC. Access MUST be restricted to secure hardware mechanisms and essential hardware functions like fuse sense and distribution logic.
+  * **Evaluation Methodology:** Manufacturers MUST provide hardware design documentation showing access controls on fuse read/write mechanisms, ensuring only authorized hardware components can access these fuses.
+
+#### *JTAG and Debug Interfaces*
+
+* **Checklist Item:**  
+  * **Requirement*:** When JTAG or other debug interfaces are enabled, they MUST NOT allow access to Caliptra's fuses or fuse shadow registers containing secrets. This applies to both pre and post SoC reset states.  
+  * **Evaluation Methodology:** Manufacturers MUST explain how debug interfaces are managed to prevent unauthorized access to sensitive fuses, including any hardware or firmware controls in place.
+
+#### *Integrity Maintenance*
+
+* **Checklist Item:**  
+  * **Recommendation:** The integrity of each fuse SHOULD be maintained throughout the lifespan of the device to prevent degradation or tampering that could affect security.  
+  * **Evaluation Methodology:** Manufacturers SHOULD describe the techniques used to ensure fuse integrity, such as redundancy, error correction codes (ECC), or other protective measures.
+
+#### *In-Field Programmable Fuses*
+
+* **Checklist Item:**  
+  * **Recommendation:** Authorization mechanisms SHOULD be implemented for in-field programmable fuses to prevent unauthorized updates that could lead to denial-of-service or other attacks.  
+  * **Evaluation Methodology:** Manufacturers SHOULD document the authorization processes required to program fuses in the field, including cryptographic protections or authentication steps.
+
+#### *Caliptra SVN (Security Version Number) Management*
+
+* **Checklist Item:**  
+  * **Requirement*:** Before updating any Caliptra SVN fuses, the SoC MUST verify that the firmware integrity and authenticity have been validated, and that the new SVN is greater than the current one.  
+  * **Evaluation Methodology:** Manufacturers MUST describe the SVN update process, including checks performed to prevent unauthorized or erroneous updates.
+
+## Interfaces
+
+### *Mailbox Interface Compliance*
+
+* **Checklist Item:**  
+  * **Requirement*:** The SoC Manager MUST implement the mailbox interface according to the Caliptra specification, ensuring proper handling of commands and status registers. Using the Caliptra Libraries (Rust and C versions) provided by the Caliptra WG release is recommended as a reference codebase.  
+  * **Evaluation Methodology:** Manufacturers MUST provide evidence, such as interface specifications or test results, demonstrating compliance with the mailbox interface requirements.
+
+### *Debug Interface Management*
+
+* **Checklist Item:**  
+  * **Requirement:** The debug interfaces, including JTAG, MUST be securely managed to prevent unauthorized access to Caliptra internals or sensitive data.  
+  * **Evaluation Methodology:** Manufacturers MUST explain how debug interfaces are controlled, including secure enable/disable mechanisms, and how they prevent unauthorized access to Caliptra.
+
+### *Hardware Implementation*
+
+* **Checklist Item:**  
+  * **Requirement:** Hardware implementation of Caliptra MUST adhere to the SoC Integration Requirements of the RTL release that was used. Refer to docs/CaliptraIntegrationSpecification.md (section "SoC integration requirements") from the official release that was consumed for integration, as listed in [Releases](https://github.com/chipsalliance/caliptra-rtl/releases). Integrators pursuing the **Caliptra Subsystem Trademark** must additionally consult the Caliptra Subsystem Integration Specification for Subsystem-specific integration requirements, from official [Releases](https://github.com/chipsalliance/caliptra-ss/releases).
+  * **Evaluation Methodology:** Manufacturers MUST show the hardware implementation complies to the integration requirements in the caliptra-rtl repo and, if pursuing the Caliptra Subsystem Trademark, also complies to the integration requirements in the caliptra-ss repo. Note: the scope of the RTL integration requirements are limited to the hardware and ROM instantiation and do not cover firmware capabilities.
+
+## SoC Root of Trust (RoT)
+
+### *Boot and Initialization Process*
+
+* **Checklist Item:**
+  * **Requirement:** SoC firmware that interacts with Caliptra as the privileged PA_USER (for 1.X implementations) or AXI_USER (for 2.X implementations), including RTM firmware, MUST be measured, and those measurements MUST be submitted to Caliptra.
+  * **Recommendation:** Other SoC firmware SHOULD be measured.
+  * **Requirement:** Configuration data that modifies the security properties of measured firmware MUST also be measured.
+  * **Requirement:** The collecting of each measurement MUST occur before execution of that firmware or usage of that configuration data.
+  * **Requirement:** Measurements MUST be submitted to Caliptra by the same entity that collected the measurement (e.g. SoC FMC cannot pass measurements to SoC FW for submission to the Caliptra mailbox).
+  * **Evaluation Methodology:** Manufacturers SHOULD provide a detailed description of how measurements are communicated to Caliptra.
+
+### *Caliptra Privileged USER Management*
+
+* **Checklist Item:**  
+  * **Requirement:** The management of Caliptra's PA_USER (for 1.X implementations) or AXI_USER (for 2.X implementations) MUST ensure isolation and protection of privileged operations, preventing unprivileged users from forging measurements or accessing privileged functions.
+  * **Evaluation Methodology:** Manufacturers MUST document how the applicable USER values are mapped in hardware and the mechanisms in place to isolate privileged operations from unprivileged ones.
+
+### *Random Number Generator (RNG) Implementation*
+
+* **Checklist Item:**  
+  * **Requirement*:** If an RNG is included in the Caliptra Wrapper, it MUST be securely implemented, and its design MUST meet applicable cryptographic standards. The source of entropy (internal or external) SHOULD be specified.  
+  * **Evaluation Methodology:** Manufacturers MUST demonstrate that the RNG, including entropy sources, is compliant with standards like [NIST SP 800-90A](https://csrc.nist.gov/pubs/sp/800/90/a/r1/final), [SP 800-90B](https://csrc.nist.gov/pubs/sp/800/90/b/final), [SP 800-90C](https://csrc.nist.gov/pubs/sp/800/90/c/4pd).
+
+## Specific Functionality
+
+### *Caliptra Life Cycle Selection and State Handling*
+
+* **Checklist Item:**  
+  * **Requirement:** Some requirements in this document condition SoC behavior on SoC lifecycle state. Where this is the case, the SoC MUST ensure that its own lifecycle has reached a conformant state before transitioning Caliptra's operational mode from unprovisioned to manufacturing or production.
+  * **Evaluation Methodology:** Manufacturers MUST provide a state machine diagram or equivalent documentation showing how Caliptra's mode transitions are managed and synchronized with the SoC's states.
+
+### *Error Handling*
+
+* **Checklist Item:**  
+  * **Requirement:** The SoC MUST correctly implement error handling and reporting mechanisms for interactions with Caliptra, especially for security-relevant events, without leaking sensitive information.  
+  * **Evaluation Methodology:** Manufacturers MUST document the error handling procedures, including what information is reported, how errors are logged, and measures taken to prevent information leakage. Specific error codes and messages SHOULD be reviewed for appropriateness.
+
+### *Log Functionality in SoC*
+
+* **Checklist Item:**
+  * **Requirement*:** The SoC MUST implement logging functionality that allows the compounded measurements stored by Caliptra to be reconstructed.
+  * **Evaluation Methodology:** Manufacturers MUST describe the logging mechanism, including how logs are structured and how they integrate with Caliptra's measurement processes.
+
+## Secure Processes
+
+### *Development Process*
+
+#### *Testing and Verification*
+
+* **Checklist Item:**  
+  * **Recommendation:** The product SHOULD undergo thorough testing and verification during development, focusing on both functional correctness and security aspects. This includes testing of specific features and security mechanisms.  
+  * **Evaluation Methodology:** Manufacturers SHOULD present test plans, results, and security analyses covering critical functionalities such as:  
+    * Field programmable entropy API  
+    * Generation and endorsement of attestation messages  
+    * CSR generation and handling  
+    * DICE identity provisioning  
+    * Attestation processes  
+    * Debug state transitions  
+    * SVN updates and enforcement  
+    * Firmware updates (FMC and RT FW)
+
+### *Production Process*
+
+#### *Debugging Controls*
+
+* **Checklist Item:**  
+  * **Requirement:** The SoC MUST put Caliptra into a debug state when the SoC is operating in a mode that permits the usage of code/data which differs from the measurements submitted to Caliptra.
+  * **Requirement:** The SoC MUST put Caliptra into a debug state any time test or debug logic allows read or write access to Caliptra logic or SRAM.
+  * **Evaluation Methodology:** In Caliptra Core mode the debug state transition must be handled by the SoC manager, and in Caliptra Subsystem mode the SoC must follow the debug unlock procedure. Manufacturers MUST describe how debugging is enabled for the SoC and for Caliptra, including any fuse settings, access controls, and procedures to disable debugging interfaces.
+
+#### *Flaw Remediation Process*
+
+* **Checklist Item:**  
+  * **Requirement:** There MUST be a defined process for handling reported vulnerabilities, including assessment, communication, and deployment of security updates or mitigations.
+  * **Requirement:** Vendors MUST report issues or vulnerabilities that impact compliance with these Trademark requirements to the Caliptra Trademark Owner TAC at <caliptra-tm@lists.chipsalliance.org>.
+  * **Evaluation Methodology:** Manufacturers MUST provide their flaw remediation policy. This policy must describe how vulnerabilities are received (e.g., bug bounty programs), evaluated, and prioritized, and how updates are securely delivered to devices in the field. Procedures for notifying stakeholders and compliance with relevant regulations MUST also be described.
+
+---
+
+# Part II: Caliptra Core Trademark - Additional Requirements (Passive Mode)
+
+The requirements in this section apply **only** to integrations pursuing the
+**Caliptra Core Trademark (Passive Mode)**. All requirements in Part I also
+apply.
+
+## RTL Configuration
+
+### *Core Mode*
+
+* **Checklist Item:**
+  * **Requirement:** The macro `CALIPTRA_MODE_SUBSYSTEM` MUST NOT be defined in
+    `config_defines.svh` or in any build process. Defining this macro activates
+    Subsystem-mode behavior and is incompatible with a Caliptra Core Trademark integration.
+  * **Evaluation Methodology:** Manufacturers MUST provide the `config_defines.svh`
+    used in the integration and demonstrate that `CALIPTRA_MODE_SUBSYSTEM` is
+    absent.
+
+### *TRNG Configuration (Core)*
+
+* **Checklist Item:**
+  * **Requirement:** The internal TRNG (`CALIPTRA_INTERNAL_TRNG`) is optional in
+    Core Trademark integrations. If the internal TRNG is not enabled, the SoC
+    MUST provide a compliant external TRNG via the Caliptra TRNG HW API.
+  * **Evaluation Methodology:** Manufacturers MUST document the TRNG configuration choice and provide evidence that the TRNG source (internal or external) meets applicable cryptographic standards.
+
+## Interface Connectivity
+
+### *DMA Assist Engine Isolation*
+
+* **Checklist Item:**
+  * **Requirement:** All AXI manager output interfaces of the Caliptra IP MUST
+    NOT be connected to the SoC AXI interconnect and input signals MUST be tied
+    to 0.
+    The DMA assist block is inactive in Passive Mode and must not be wired to any
+    SoC interconnect fabric.
+  * **Evaluation Methodology:** Manufacturers MUST provide RTL or integration
+    schematics demonstrating that all AXI manager signals from Caliptra are
+    unconnected and not routed to the SoC interconnect, with all input signals
+    tied to ground.
+
+### *SHA Accelerator Access Restriction*
+
+* **Checklist Item:**
+  * **Requirement:** The SHA accelerator block MUST be inaccessible to SoC
+    components when Caliptra Core is integrated in Passive mode, if integrating
+    version 2.0 or later. In such designs, AXI streaming mode is disabled; the SHA
+    accelerator is available only in Caliptra-internal mailbox mode. No SoC
+    agent may access the SHA accelerator via any path.
+  * **Evaluation Methodology:** Manufacturers MUST demonstrate through RTL
+    review or architecture documentation that no SoC agent has a path to the
+    SHA accelerator, and that AXI streaming mode is not enabled. The value
+    driven for the strap `strap_ss_caliptra_dma_axi_user` is used as a
+    gating condition for SHA accelerator access via AXI. There shall
+    not be a path from any SoC AXI manager that drives this AXI_USER value
+    to Caliptra Core's AXI subordinate interface. This requirement applies
+    for Caliptra Core release versions 2.0.0 and later.
+
+### *Subsystem Strap Isolation*
+
+* **Checklist Item:**
+  * **Requirement:** All `strap_ss_*` Subsystem-mode strap signals (except for
+    `strap_ss_caliptra_dma_axi_user`) MUST be tied to logic 0.
+    The signals `ss_debug_intent`, `cptra_obf_field_entropy_vld`,
+    `cptra_obf_field_entropy`, `cptra_obf_uds_seed_vld`, and
+    `cptra_obf_uds_seed` MUST be tied to 0.
+    Integrators may need to drive a non-zero value on the strap
+    `strap_ss_caliptra_dma_axi_user` to maintain compliance with
+    [SHA Accelerator Access Restriction](#sha-accelerator-access-restriction).
+  * **Evaluation Methodology:** Manufacturers MUST provide RTL evidence
+    (e.g., tie-off assertions or integration top-level wiring) demonstrating
+    that all listed strap signals are permanently grounded.
+
+## Secure Processes
+
+### *Development Process*
+
+#### *Integrity of Hardware and ROM*
+
+* **Checklist Item:**
+  * **Requirement:** The Caliptra RTL MUST be from an official release or TAC approved modification. Changes to the RTL other than those documented in the Integrator RTL Modification Requirements MUST be published to GitHub to obtain approval for the modification. Refer to docs/CaliptraIntegrationSpecification.md (section "Integrator RTL Modification Requirements") from the official release that was consumed for integration, as listed in [Releases](https://github.com/chipsalliance/caliptra-rtl/releases).
+  * **Evaluation Methodology:** Manufacturers MUST show all changes made to RTL files. Manufacturers MUST show that changes to files in the Integrator RTL modification list are limited to the scope described in those requirements, and MUST show TAC approval for other changes. The [audit tools](https://github.com/chipsalliance/caliptra-rtl/tree/main/tools) can be used to identify changes.
+* **Checklist Item:**
+  * **Requirement:** Netlists, layout, and other development collateral derived from the RTL MUST maintain the same behavior as the released RTL when Caliptra is in the [Production Non-Debug state](https://github.com/chipsalliance/Caliptra/blob/main/doc/Caliptra.md#caliptra-security-states).
+  * **Evaluation Methodology:** Manufacturers MUST provide evidence that collateral derived from the released RTL has not had its behavior modified.
+* **Checklist Item:**
+  * **Requirement:** Cryptographic hash of the Caliptra ROM used in final hardware design MUST match reference hash of official Caliptra releases.
+  * **Evaluation Methodology:** Manufacturers MUST demonstrate that the SHA384 hash of ROM matches that of the official release that is integrated.
+
+---
+
+# Part III: Caliptra Subsystem Trademark - Additional Requirements
+
+The requirements in this section apply **only** to integrations pursuing the
+**Caliptra Subsystem Trademark**. All requirements in Part I also apply.
+
+## Interface Connectivity
+
+### *AXI DMA Engine Connectivity*
+
+* **Checklist Item:**
+  * **Requirement:** The AXI DMA assist engine MUST be connected to the SoC AXI
+    interconnect. AXI AxUSER signals MUST pass through unmodified to all AXI
+    subordinates.
+  * **Evaluation Methodology:** Manufacturers MUST provide architecture
+    documentation and RTL evidence showing that the DMA engine is wired to the
+    SoC interconnect and that AxUSER signals are propagated without
+    modification.
+
+### *SHA Accelerator Access Restriction (Subsystem)*
+
+* **Checklist Item:**
+  * **Requirement:** The SHA accelerator MUST be accessible only via Caliptra’s
+    AXI DMA block. No SoC agent may access the SHA accelerator directly. The
+    SHA accelerator enforces this restriction via AXI AxUSER checking; the
+    integrator MUST configure `strap_ss_caliptra_dma_axi_user` to correctly
+    identify Caliptra’s DMA transactions.
+  * **Evaluation Methodology:** Manufacturers MUST provide strap configuration
+    documentation and demonstrate, via RTL or architecture review, that no
+    direct SoC path to the SHA accelerator exists and that AxUSER checking is
+    correctly configured.
+
+### *Subsystem Straps Configuration*
+
+* **Checklist Item:**
+  * **Requirement:** All `strap_ss_*` Subsystem-mode strap signals MUST be
+    properly configured per the Caliptra Subsystem Integration Specification.
+  * **Evaluation Methodology:** Manufacturers MUST provide strap configuration
+    documentation showing specification-compliant values for all
+    `strap_ss_*` signals.
+
+## OCP Streaming Boot
+
+* **Checklist Item:**
+  * **Requirement:** OCP streaming boot MUST be implemented through the I3C interface
+    provided with the Caliptra Subsystem official release RTL to ensure compliance with
+    the OCP Recovery specification.
+  * **Evaluation Methodology:** Manufacturers MUST provide documentation or test
+    evidence demonstrating that OCP Streaming Boot is executed through the official I3C
+    component in Caliptra Subsystem release code.
+
+## Production Debug Unlock
+
+* **Checklist Item:**
+  * **Requirement:** The Production Debug Unlock Architecture MUST be used.
+    The simple JTAG security-state mechanism used in Passive Mode (Core
+    Trademark) is not applicable to Subsystem integrations. Any SoC DFT
+    or TAP access must be initiated through the Caliptra Subsystem Debug
+    Unlock procedure.
+  * **Evaluation Methodology:** Manufacturers MUST document the debug unlock
+    mechanism implemented and demonstrate that it conforms to the Production
+    Debug Unlock Architecture defined in the Caliptra Subsystem Integration
+    Specification.
+
+## Subsystem Secret Signal Protection
+
+* **Checklist Item:**
+  * **Requirement:** Subsystem-level signals, registers, and other storage elements that carry or buffer secret material - including, but not limited to, the UDS seed, Field Entropy, and Debug Unlock tokens - MUST NOT be accessible (readable or modifiable) to firmware or to any on-chip non-Caliptra entity outside the Caliptra Subsystem trust boundary. Such signals MUST NOT be placed on any scannable path and MUST NOT be observable through debug, trace, scandump, or any other on-die or off-die mechanism. This requirement extends the Device Keys scan-exclusion requirement (see [Device Keys](#device-keys)) to every Subsystem-level secret-bearing element introduced by the Subsystem integration, including any wires, flops, or temporary storage that hold the cleartext value of such assets at any point during their delivery into the Caliptra Subsystem trust boundary.
+  * **Evaluation Methodology:** Manufacturers MUST enumerate every Subsystem-level signal, register, or storage element that carries or buffers UDS seed, Field Entropy, or Debug Unlock token material, and MUST demonstrate through architectural documentation, security analyses, and verifiable testing, that such signals, registers, or storage elements are inaccessible to firmware and other unauthorized components and are not exposed on scan, debug, or trace paths. Evidence SHOULD cover:
+    * **DFT intent.** Synthesis or DFT-tool constraint files demonstrating that the identified flops are explicitly excluded from scan insertion.
+    * **DFT result.** Scan-insertion reports, scan-chain stitching reports, or gate-level netlist diffs confirming that the identified cells are absent from every scan chain in the final taped-out netlist.
+    * **Verification result.** Gate-level simulation with scan enable asserted showing that the identified signals cannot be observed at any scan output, debug interface, or trace port.
+
+## Subsystem Fuse Map
+
+* **Checklist Item:**
+  * **Requirement:** The integrator MUST implement the Caliptra Subsystem fuse map per
+    the [Fuse Macro Memory Map and Fuse Controller CSR Address Map](https://github.com/chipsalliance/caliptra-ss/releases)
+    section of the Caliptra Subsystem Integration Specification from the consumed official release.
+    The fuse map has three segments: **Caliptra-Core** (`CALIPTRA_CORE` prefix) fuses, which are
+    mandatory and MUST conform to the
+    [Caliptra Core Fuse Map](https://github.com/chipsalliance/Caliptra/blob/main/doc/Caliptra.md#fuse-map)
+    with Partitions 0-5 fixed in size; **Caliptra-Subsystem** (`CALIPTRA_SS` prefix) fuses,
+    which are mandatory for Subsystem integrations; and **SoC/Vendor-Specific** fuses, which
+    MAY be customized or omitted.
+  * **Evaluation Methodology:** Manufacturers MUST provide fuse map documentation demonstrating
+    that the Caliptra-Core and Caliptra-Subsystem segments are fully implemented per the
+    specifications above, and that any SoC/Vendor-Specific customizations do not affect the
+    mandatory segments.
+
+## SoC Root of Trust (RoT)
+
+### *Boot and Initialization Process*
+
+* **Checklist Item:**
+  * **Requirement:** Products (defined by Vendor, Model, and Type) receiving a trademark MUST NOT be capable of bypassing, disabling, holding in reset, or ignoring the results of Caliptra in production silicon. Mechanisms whose effect is to enable Caliptra are permitted only if they are irreversibly committed to the enabled state and hardened against side-channel attacks by the manufacturer prior to shipment.
+  * **Evaluation Methodology:** Manufacturers MUST demonstrate non-bypassability through verifiable evidence. Acceptable evidence includes boot-flow documentation showing Caliptra as a hard gate on SoC operation, RTL or netlist analysis of every signal capable of gating or resetting Caliptra, identification and irreversible severance of any pre-production bypass paths, and fuse maps or test reports confirming that any enable mechanisms are committed at manufacturing and cannot be reversed.
+
+## Secure Processes
+
+### *Development Process*
+
+#### *Integrity of Hardware and ROM*
+
+* **Checklist Item:**
+  * **Requirement:** The full Caliptra Subsystem RTL MUST be from an official release
+    or TAC approved modification. Changes to the RTL other than those documented in
+    the Integrator RTL Modification Requirements MUST be published to GitHub to obtain
+    approval for the modification. This requirement applies to the top-level wrapper
+    of Caliptra Subsystem and all underlying components as defined in the Caliptra
+    Subsystem Hardware Specification. For Caliptra Core and I3C core, the integrated
+    code must exactly match the design from the submodule pointer that is part of the
+    released Subsystem design. Caliptra Core ROM must also be consumed as-is from a
+    compatible official release. Refer to the Caliptra Subsystem Integration
+    Specification (section "Integration Considerations") from the
+    official release that was consumed for integration, as listed in
+    [Releases](https://github.com/chipsalliance/caliptra-ss/releases).
+  * **Evaluation Methodology:** Manufacturers MUST show all changes made to Subsystem
+    RTL files. Manufacturers MUST show that changes to files in the Integrator RTL
+    modification list are limited to the scope described in those requirements, and
+    MUST show TAC approval for other changes.
+* **Checklist Item:**
+  * **Requirement:** Cryptographic hash of the Caliptra Core ROM used in final hardware design MUST match reference hash of official Caliptra Core releases.
+  * **Evaluation Methodology:** Manufacturers MUST demonstrate that the SHA384 hash of ROM matches that of the official release that is integrated.
+
+---
+
+# Part IV: Caliptra Subsystem with OCP L.O.C.K. Trademark - Additional Requirements
+
+The requirements in this section apply **only** to integrations pursuing the
+Trademark for Caliptra Subsystem in the OCP L.O.C.K.-enabled configuration.
+All requirements in [Part I](#part-i-common-requirements) and [Part III](#part-iii-caliptra-subsystem-trademark---additional-requirements) also apply.
+
+## OCP L.O.C.K. Specification Compliance
+
+* **Checklist Item:**
+  * **Requirement:** Any product integrating Caliptra Subsystem configured with support for OCP L.O.C.K. MUST comply with the requirements listed in the Compliance section of [lock_spec.ocp](../ocp_lock/lock_spec.ocp).
+  * **Evaluation Methodology:** Manufacturers MUST provide evidence to demonstrate that the SoC complies with all OCP LOCK requirements.

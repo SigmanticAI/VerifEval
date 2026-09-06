@@ -1,0 +1,46 @@
+'
+' OCP Lock: Sequence diagram showing Caliptra FW/encryption engine interactions
+'
+'
+@startuml
+
+!include utils.inc
+
+ee++
+
+note over ee
+    Wait for Caliptra to write <b>EXE</b> = 1
+end note
+
+cfw++
+cfw -> sfr : write <b>METD</b>, <b>AUX</b>, <b>MEK</b>
+cfw -> sfr : write <b>CMD</b> = 1, <b>EXE</b>=1
+
+ee -> sfr : read <b>METD</b>, <b>AUX</b> <b>MEK</b>
+
+note over cfw
+    Wait for encryption engine to write <b>DN</b> = 1
+end note
+
+&ee -> kc++ : <b>METD</b>, <b>AUX</b>, <b>MEK</b>
+kc -> kc : Store <b>METD</b>, <b>AUX</b>, <b>MEK</b>
+kc -> ee-- : No error
+ee -> sfr : write <b>EXE</b> = 0, <b>ERR</b>=0,\n          <b>DN</b>=1
+
+note over ee
+    Wait for Caliptra to write <b>DN</b> = 1
+end note
+
+&cfw -> sfr : read <b>ERR</b>
+
+cfw -> sfr : write <b>DN</b> = 1
+||5||
+
+note over cfw
+    Wait for encryption engine to write <b>DN</b> = 0
+end note
+
+ee -> sfr : write <b>CMD</b> = 0, <b>ERR</b> = 0,\n          <b>DN</b> = 0, <b>EXE</b> = 0
+cfw--
+
+@enduml

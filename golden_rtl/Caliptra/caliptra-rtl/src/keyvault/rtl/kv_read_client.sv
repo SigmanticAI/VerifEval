@@ -1,0 +1,173 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//`include "kv_defines.svh"
+`include "caliptra_prim_assert.sv"
+
+module kv_read_client 
+    import kv_defines_pkg::*;
+    #(
+    parameter DATA_WIDTH = 512
+   ,parameter HMAC = 0
+   ,parameter AES = 0
+   ,parameter PAD = 0
+   ,parameter LEN_CHECK = 1
+   ,parameter LEN_CHECK_AT_KEY_USE = 0
+
+   ,localparam DATA_OFFSET_W = $clog2(DATA_WIDTH/32)
+)
+(
+    input logic clk,
+    input logic rst_b,
+    input logic zeroize,
+
+    //client control register
+    input kv_read_ctrl_reg_t read_ctrl_reg,
+
+    //access filtering rule metrics
+    input var kv_read_filter_metrics_t read_metrics,
+
+    //interface with kv
+    output kv_read_t kv_read,
+    input kv_rd_resp_t kv_resp,
+
+    //interface with client
+    output logic write_en,
+    output logic [DATA_OFFSET_W-1:0] write_offset,
+    output logic [31:0] write_data,
+
+    output kv_error_code_e error_code,
+    output logic kv_ready,
+    output logic read_done,
+    input  logic                       check_key_size,
+    input  logic [KV_ENTRY_SIZE_W-1:0] expected_key_size
+);
+
+logic [KV_ENTRY_SIZE_W-1:0] stored_last_dword;
+logic length_mismatch;
+
+logic validated_read_en;
+logic read_allow;
+logic [DATA_OFFSET_W-1:0] read_offset;
+logic [DATA_OFFSET_W:0] num_dwords;
+logic write_pad;
+logic [31:0] pad_data;
+logic fsm_error;
+
+logic kv_fsm_ready;
+
+assign num_dwords = DATA_WIDTH/32;
+
+kv_read_rule_check kv_read_rules
+(
+    .clk         (clk                  ),
+    .rst_b       (rst_b                ),
+
+    .read_en_i   (read_ctrl_reg.read_en),
+    .read_done   (read_done            ),
+    .read_en_o   (validated_read_en    ), // Delayed from read_en_i to start read client FSM in sync with rule check result
+
+    .read_metrics(read_metrics         ),
+    .read_allow  (read_allow           )
+);
+
+//read fsm
+kv_fsm #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .HMAC(HMAC),
+    .PAD(PAD)
+)
+kv_read_fsm
+(
+    .clk(clk),
+    .rst_b(rst_b),
+    .zeroize(zeroize),
+    .start(validated_read_en),
+    .allow(read_allow),
+    .last (kv_resp.last),
+    .abort_i(kv_resp.error), // Abort read on KV error
+    .pcr_hash_extend(read_ctrl_reg.pcr_hash_extend),
+    .num_dwords(num_dwords),
+    .read_offset(read_offset),
+    .write_en(write_en),
+    .write_offset(write_offset),
+    .write_pad(write_pad),
+    .write_last(),
+    .pad_data(pad_data),
+    .ready(kv_fsm_ready),
+    .done(read_done),
+    .fsm_error(fsm_error)
+);
+
+always_comb kv_read.read_entry = read_ctrl_reg.read_entry;
+always_comb kv_read.read_offset = KV_ENTRY_SIZE_W'(read_offset);
+
+always_comb write_data = write_pad ? pad_data : kv_resp.read_data;
+
+always_ff @(posedge clk or negedge rst_b) begin
+    if (!rst_b) begin
+        error_code <= KV_SUCCESS;
+    end
+    else if (zeroize) begin
+        error_code <= KV_SUCCESS;
+    end
+    else if (fsm_error) begin
+        error_code <= KV_FSM_ERROR;
+    end
+    else begin
+        // On first beat of kv read, latch any error conditions.
+        // On subsequent beats of kv read, preserve any error that was previously
+        // flagged or decode new error conditions
+        error_code <= validated_read_en && ~read_allow ? KV_READ_FAIL :
+                      write_en && |write_offset && (error_code != KV_SUCCESS) ? error_code :
+                      write_en && kv_resp.error ? KV_READ_FAIL :
+                      length_mismatch ? KV_RD_LEN_MISMATCH :
+                      write_en && ~kv_resp.error ? KV_SUCCESS : error_code;
+    end
+end
+
+//for AES kv ready can't be held for errors since AES does not have zeroize support
+//AES already handles the key material in case of errors
+generate
+    if (AES) begin : aes_kv_ready_gen
+        always_comb kv_ready = kv_fsm_ready & ~validated_read_en;
+    end else begin :non_aes_kv_ready_gen
+        always_comb kv_ready = kv_fsm_ready & (error_code == KV_SUCCESS) & ~validated_read_en;
+    end
+endgenerate
+
+// Latch the addressed KV entry's stored last_dword during the read.
+// Sourced from the readmux (kv_resp.entry_last_dword) — independent of the
+// consumer's own DATA_WIDTH, so a consumer whose read window does not reach
+// the entry's true end still sees the correct stored size.
+always_ff @(posedge clk or negedge rst_b) begin
+    if (!rst_b)              stored_last_dword <= '0;
+    else if (zeroize)        stored_last_dword <= '0;
+    else if (write_en)       stored_last_dword <= kv_resp.entry_last_dword;
+end
+
+logic length_check_trigger;
+always_comb length_check_trigger = (LEN_CHECK_AT_KEY_USE != 0) ? check_key_size
+                                                              : read_done;
+
+// Length-mismatch: consumer requires a KV entry of at least `expected_key_size`
+// dwords. A larger entry is accepted. A smaller entry triggers the
+// error and refuses the op. Once error_code latches KV_RD_LEN_MISMATCH the
+// mux self-holds until rst_b/zeroize (same discipline as KV_READ_FAIL).
+always_comb length_mismatch = (LEN_CHECK != 0) && length_check_trigger &&
+                              (stored_last_dword < expected_key_size);
+
+`CALIPTRA_ASSERT_KNOWN(READ_METRICS_X,  read_metrics, clk, !rst_b)
+
+endmodule
