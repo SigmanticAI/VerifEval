@@ -1,6 +1,0 @@
-__design_bin_path=/home/rocky/VerifEval/sample_outputs/simple_counter
-__design_bin_name_path=/home/rocky/VerifEval/sample_outputs/simple_counter/design.bin
-incr_run_version=16384
-incr_partial_run_stats=0:0
-incr_no_change_stats=0:0
-opt_data_elab=/home/rocky/VerifEval/sample_outputs/simple_counter/work/@_opt
